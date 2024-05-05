@@ -1,0 +1,13 @@
+streamlit==1.29.0
+pandas>2.0
+numpy<=1.25.1
+plotly == 5.18.0
+pytrends == 4.9.2
+geopy == 2.4.1
+streamlit-folium==0.5.0
+folium==0.13.0
+yfinance==0.2.38
+plotly==5.3.1
+requests==2.26.0
+pytz==2024.1
+googletrans==3.1.0a0
