@@ -296,7 +296,7 @@ def plot_volume_chart(stock_data,symbols):
     st.plotly_chart(fig, use_container_width=True)
 
 #公司盈利
-#@st.cache_data
+@st.cache_data
 def stock_earnings_dates(symbol):
     translation = {
         'Earnings Date':'日期',
@@ -487,7 +487,7 @@ def stock_upgrades_downgrades(symbol, head):
         st.error(f"獲取持有{symbol}的機構買賣數據時出錯：{str(e)}")
 
 #相關新聞
-#@st.cache_data
+@st.cache_data
 def display_news_table(symbol):
     translation_columns = {
         'title':'標題',
@@ -502,7 +502,7 @@ def display_news_table(symbol):
     st.subheader(f'{symbol}-相關新聞')
     st.table(news_df)
 
-#@st.cache_data   
+@st.cache_data   
 def display_news_links(symbol):
     ticker = yf.Ticker(symbol)
     news = ticker.news
