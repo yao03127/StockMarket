@@ -448,7 +448,7 @@ def stock_insider_roster_holders(symbol):
         'Most Recent Transaction':'最近的交易',
         'Latest Transaction Date':'最新交易日期',
         'Shares Owned Indirectly':'間接擁有股份',
-        'Position Indirect Date':'間接持股日期',
+        #'Position Indirect Date':'間接持股日期',
         'Shares Owned Directly':'直接擁有股份',
         'Position Direct Date':'直接持股日期'
         }
