@@ -303,8 +303,8 @@ def stock_earnings_dates(symbol):
         'EPS Estimate':'每股盈利預估',
         'Reported EPS':'實際每股盈利'
         }
-    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    earnings_dates = ticker.earnings_dates
+    symbol = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
+    earnings_dates = symbol.earnings_dates
     earnings_dates = earnings_dates.rename(columns=translation)
     st.subheader(f'{symbol}-盈利資訊')  # 使用函數參數中的 symbol
     earnings_dates = st.table(earnings_dates)
@@ -319,12 +319,12 @@ def stock_actions(symbol, start_date, end_date):
         'Stock Splits':'股票拆分'
         }
     try:
-        ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
+        symbol = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
         start_date = datetime.combine(start_date, datetime.min.time())
         end_date = datetime.combine(end_date, datetime.min.time())
         start_date = pytz.utc.localize(start_date)
         end_date = pytz.utc.localize(end_date)
-        actions = ticker.actions[start_date:end_date]  # 指定日期範圍
+        actions = symbol.actions[start_date:end_date]  # 指定日期範圍
         actions = actions.rename(columns=translation)
         st.subheader(f'{symbol}-股息/股票分割')
         st.table(actions)
@@ -344,8 +344,8 @@ def stock_major_holder(symbol):
         'institutionsCount': '內部總持有股份',
         'nstitutionsCount': '機構持股數量'
         }
-    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    major_holders = ticker.major_holders
+    symbol = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
+    major_holders = symbol.major_holders
     major_holders = major_holders.rename(columns=translation_columns, index=translation_index)  
     #轉換成百分比
     columns = ['內部持股百分比', '機構持股百分比', '流通股機構持股百分比']
@@ -369,8 +369,8 @@ def stock_institutional_holders(symbol):
         'Shares': '股份',
         'Value': '價值'
     }
-    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    institutional_holders = ticker.institutional_holders
+    symbol = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
+    institutional_holders = symbol.institutional_holders
     institutional_holders = institutional_holders.rename(columns=translation) 
     # 將百分比轉換為百分數形式
     institutional_holders['持股百分比'] = institutional_holders['持股百分比'].apply(lambda x: f"{x:.2f}%" if isinstance(x, float) else x)   
@@ -394,8 +394,8 @@ def stock_insider_transactions(symbol, head):
         'Ownership':'持有權'
         }
     try:
-        ticker = yf.Ticker(symbol)
-        insider_transactions = ticker.insider_transactions
+        symbol = yf.Ticker(symbol)
+        insider_transactions = symbol.insider_transactions
         insider_transactions = insider_transactions.drop(columns=['URL','Transaction'])
         insider_transactions = insider_transactions.rename(columns=translation)
         if insider_transactions is not None and not insider_transactions.empty:
@@ -418,7 +418,7 @@ def stock_insider_transactions(symbol, head):
 # 內部購買
 @st.cache_data
 def stock_insider_purchases(symbol):
-    ticker = yf.Ticker(symbol)
+    symbol = yf.Ticker(symbol)
     insider_purchases = ticker.insider_purchases
     #轉換成百分比
     columns = ['% Net Shares Purchased (Sold)', '% Buy Shares', '% Sell Shares']
@@ -452,7 +452,6 @@ def stock_insider_roster_holders(symbol):
         'Shares Owned Directly':'直接擁有股份',
         'Position Direct Date':'直接持股日期'
         }
-    symbol = symbol
     symbol = yf.Ticker(symbol)
     insider_roster_holders = symbol.insider_roster_holders
     insider_roster_holders = insider_roster_holders.rename(columns=translation)
@@ -471,8 +470,8 @@ def stock_upgrades_downgrades(symbol, head):
         'Action':'立場',
         }
     try:
-        ticker = yf.Ticker(symbol)
-        upgrades_downgrade = ticker.upgrades_downgrades
+        symbol = yf.Ticker(symbol)
+        upgrades_downgrade = symbol.upgrades_downgrades
         upgrades_downgrade = upgrades_downgrade.rename(columns=translation)
         if upgrades_downgrade is not None and not upgrades_downgrade.empty:
             if head > 0:
