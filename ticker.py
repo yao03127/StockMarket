@@ -495,8 +495,8 @@ def display_news_table(symbol):
         'link':'網址',
         'relatedTickers':'相關股票代碼'
     }
-    ticker = yf.Ticker(symbol)
-    news = ticker.news
+    symbol = yf.Ticker(symbol)
+    news = symbol.news
     news_df = pd.DataFrame(news).drop(columns=['uuid', 'providerPublishTime', 'type', 'thumbnail'])
     news_df = news_df.rename(columns=translation_columns)
     st.subheader(f'{symbol}-相關新聞')
@@ -504,8 +504,8 @@ def display_news_table(symbol):
 
 @st.cache_data   
 def display_news_links(symbol):
-    ticker = yf.Ticker(symbol)
-    news = ticker.news
+    symbol = yf.Ticker(symbol)
+    news = symbol.news
     news_df = pd.DataFrame(news).drop(columns=['uuid', 'providerPublishTime', 'type', 'thumbnail'])
     st.subheader(f'{symbol}-相關新聞連結')
     # 存储链接的列表
