@@ -477,7 +477,7 @@ def stock_upgrades_downgrades(symbol, head):
         if upgrades_downgrade is not None and not upgrades_downgrade.empty:
             if head > 0:
                 upgrades_downgrade = upgrades_downgrade.head(head)               
-                st.subheader(f'持有{symbol}的機構買賣數據')
+                st.subheader(f'機構買賣{symbol}數據')
                 st.table(upgrades_downgrade)
             else:
                 st.warning("請輸入大於 0 的數字")
