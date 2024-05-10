@@ -288,14 +288,8 @@ def plot_volume_chart(stock_data,symbols):
 #公司盈利
 @st.cache_data
 def stock_earnings_date(symbol):
-    translation = {
-        'Earnings Date':'日期',
-        'EPS Estimate':'每股盈利預估',
-        'Reported EPS':'實際每股盈利'
-        }
     ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
     earnings_dates = ticker.earnings_dates
-    earnings_dates = earnings_dates.rename(columns=translation)
     st.subheader(f'{symbol}-盈利資訊')  # 使用函數參數中的 symbol
     earnings_dates = st.write(earnings_dates)
     return earnings_dates
@@ -303,11 +297,6 @@ def stock_earnings_date(symbol):
 #股息/股票分割
 @st.cache_data
 def stock_actions(symbol, start_date, end_date):
-    translation = {
-        'Date':'日期',
-        'Dividends':'股息',
-        'Stock Splits':'股票拆分'
-        }
     try:
         ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
         start_date = datetime.combine(start_date, datetime.min.time())
@@ -315,7 +304,6 @@ def stock_actions(symbol, start_date, end_date):
         start_date = pytz.utc.localize(start_date)
         end_date = pytz.utc.localize(end_date)
         actions = ticker.actions[start_date:end_date]  # 指定日期範圍
-        actions = actions.rename(columns=translation)
         st.subheader(f'{symbol}-股息/股票分割')
         st.write(actions)
         return actions
@@ -326,25 +314,16 @@ def stock_actions(symbol, start_date, end_date):
 #股權架構
 @st.cache_data
 def stock_major_holder(symbol):
-    translation_columns = {'Breakdown':'持股情況','Value':'數值'}
-    translation_index = {
-        'insidersPercentHeld': '內部持股百分比',
-        'institutionsPercentHeld': '機構持股百分比',
-        'institutionsFloatPercentHeld': '流通股機構持股百分比',
-        'institutionsCount': '內部總持有股份',
-        'nstitutionsCount': '機構持股數量'
-        }
     ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
     major_holders = ticker.major_holders
-    major_holders = major_holders.rename(columns=translation_columns, index=translation_index)  
     #轉換成百分比
-    columns = ['內部持股百分比', '機構持股百分比', '流通股機構持股百分比']
+    columns = ['insidersPercentHeld', 'institutionsPercentHeld', 'institutionsFloatPercentHeld']
     for col in columns:
         if col in major_holders.index:
-            major_holders.at[col, '數值'] = pd.to_numeric(major_holders.at[col, '數值'], errors='coerce')  # 将非数字转换为 NaN
-            major_holders.at[col, '數值'] = f"{major_holders.at[col, '數值']:.2%}" if pd.notna(major_holders.at[col, '數值']) else None
+            major_holders.at[col, 'Value'] = pd.to_numeric(major_holders.at[col, 'Value'], errors='coerce')  # 将非数字转换为 NaN
+            major_holders.at[col, 'Value'] = f"{major_holders.at[col, 'Value']:.2%}" if pd.notna(major_holders.at[col, 'Value']) else None
         #千分位表示
-        major_holders['數值'] = major_holders['數值'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
+        major_holders['Value'] = major_holders['Value'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
     st.subheader(f'{symbol}-股權架構')
     st.write(major_holders)
     return major_holders
@@ -352,21 +331,13 @@ def stock_major_holder(symbol):
 #機構持股
 @st.cache_data
 def stock_institutional_holders(symbol):
-    translation = {
-        'Date Reported': '日期',
-        'Holder': '機構名稱',
-        'pctHeld': '持股百分比',
-        'Shares': '股份',
-        'Value': '價值'
-    }
     ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
     institutional_holders = ticker.institutional_holders
-    institutional_holders = institutional_holders.rename(columns=translation) 
     # 將百分比轉換為百分數形式
-    institutional_holders['持股百分比'] = institutional_holders['持股百分比'].apply(lambda x: f"{x:.2f}%" if isinstance(x, float) else x)   
+    institutional_holders['pctHeld'] = institutional_holders['pctHeld'].apply(lambda x: f"{x:.2f}%" if isinstance(x, float) else x)   
     # 將數字轉換為千位數格式
-    institutional_holders['股份'] = institutional_holders['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
-    institutional_holders['價值'] = institutional_holders['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
+    institutional_holders['Shares'] = institutional_holders['Shares'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
+    institutional_holders['Value'] = institutional_holders['Value'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
     st.subheader(f'持有{symbol}的機構')
     st.write(institutional_holders)
     return institutional_holders
@@ -374,27 +345,16 @@ def stock_institutional_holders(symbol):
 # 內部交易
 @st.cache_data
 def stock_insider_transactions(symbol, head):
-    translation = {
-        'Shares':'股份',
-        'Value':'價值',
-        'Text':'事件',
-        'Insider':'內部人員',
-        'Position':'職位',
-        'Start Date':'開始日期',
-        'Ownership':'持有權'
-        }
     try:
         ticker = yf.Ticker(symbol)
         insider_transactions = ticker.insider_transactions
         insider_transactions = insider_transactions.drop(columns=['URL','Transaction'])
-        insider_transactions = insider_transactions.rename(columns=translation)
         if insider_transactions is not None and not insider_transactions.empty:
             if head > 0:
                 insider_transactions = insider_transactions.head(head)               
                 # 將數字轉換為千位數格式
-                insider_transactions['股份'] = insider_transactions['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
-                insider_transactions['價值'] = insider_transactions['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
-                
+                insider_transactions['Shares'] = insider_transactions['Shares'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
+                insider_transactions['Value'] = insider_transactions['Value'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)       
                 st.subheader(f'{symbol}-內部交易')
                 st.write(insider_transactions)
             else:
@@ -417,13 +377,6 @@ def stock_insider_purchases(symbol):
             insider_purchases.at[col, 'Shares'] = f"{insider_purchases.at[col, 'Shares']:.2%}" if pd.notna(insider_purchases.at[col, 'Shares']) else None
         #千分位表示
         insider_purchases['Shares'] = insider_purchases['Shares'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
-    trans_column = insider_purchases['Insider Purchases Last 6m'] 
-    translator = Translator()  # 初始化 Translator
-    translated_texts = []
-    for text in trans_column:
-        translation = translator.translate(text, dest='zh-tw').text
-        translated_texts.append(translation)
-    insider_purchases['Insider Purchases Last 6m'] = translated_texts
     st.subheader(f'{symbol}-內部購買')
     st.write(insider_purchases)
     return insider_purchases
@@ -431,20 +384,9 @@ def stock_insider_purchases(symbol):
 #內部持股
 @st.cache_data
 def stock_insider_roster_holders(symbol):
-    translation = {
-        'Name':' ',
-        'Position':'職位',
-        'Most Recent Transaction':'最近的交易',
-        'Latest Transaction Date':'最新交易日期',
-        'Shares Owned Indirectly':'間接擁有股份',
-        'Position Indirect Date':'間接持股日期',
-        'Shares Owned Directly':'直接擁有股份',
-        'Position Direct Date':'直接持股日期'
-        }
     symbol = symbol
     symbol = yf.Ticker(symbol)
     insider_roster_holders = symbol.insider_roster_holders
-    insider_roster_holders = insider_roster_holders.rename(columns=translation)
     insider_roster_holders = insider_roster_holders.drop(columns='URL')
     insider_roster_holders = st.write(insider_roster_holders)
     return insider_roster_holders
@@ -452,17 +394,9 @@ def stock_insider_roster_holders(symbol):
 #機構買賣
 @st.cache_data
 def stock_upgrades_downgrades(symbol, head):
-    translation = {
-        'GradeDate':'日期',
-        'Firm':'機構',
-        'ToGrade':'最新動作',
-        'FromGrade':'之前動作',
-        'Action':'立場',
-        }
     try:
         ticker = yf.Ticker(symbol)
         upgrades_downgrade = ticker.upgrades_downgrades
-        upgrades_downgrade = upgrades_downgrade.rename(columns=translation)
         if upgrades_downgrade is not None and not upgrades_downgrade.empty:
             if head > 0:
                 upgrades_downgrade = upgrades_downgrade.head(head)               
@@ -478,16 +412,9 @@ def stock_upgrades_downgrades(symbol, head):
 #相關新聞
 @st.cache_data
 def display_news_table(symbol):
-    translation_columns = {
-        'title':'標題',
-        'publisher':'出版商',
-        'link':'網址',
-        'relatedTickers':'相關股票代碼'
-    }
     ticker = yf.Ticker(symbol)
     news = ticker.news
     news_df = pd.DataFrame(news).drop(columns=['uuid', 'providerPublishTime', 'type', 'thumbnail'])
-    news_df = news_df.rename(columns=translation_columns)
     st.subheader(f'{symbol}-相關新聞')
     st.write(news_df)
 
