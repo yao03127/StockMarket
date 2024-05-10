@@ -287,9 +287,8 @@ def plot_volume_chart(stock_data,symbols):
 
 #公司盈利
 @st.cache_data
-def stock_earnings_date(symbol):
+def stock_earnings_dates(symbol):
     translation = {
-        'Earnings Date':'日期',
         'EPS Estimate':'每股盈利預估',
         'Reported EPS':'實際每股盈利'
         }
@@ -1147,7 +1146,7 @@ elif market == '美國' and options == '股票資訊':
     start_date = st.date_input('開始日期')
     end_date = st.date_input('結束日期' ,key='end_date')
     if st.button('查詢'):
-        stock_earnings_date(symbol)
+        stock_earnings_dates(symbol)
         stock_actions(symbol,start_date,end_date)
         stock_major_holder(symbol)
         stock_institutional_holders(symbol)
