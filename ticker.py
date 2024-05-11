@@ -1132,7 +1132,7 @@ def tpex_volume_chart(tpex_data,symbols):
 st.markdown("<h1 style='text-align: center; color: rainbow;'>StockInfo</h1>", unsafe_allow_html=True)
 st.header(' ',divider="rainbow")
 
-st.sidebar.title('StockInfo')
+st.sidebar.title('Menu')
 market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
 options = st.sidebar.selectbox('選擇功能', ['今日熱門','公司基本資訊','公司財報查詢','交易數據','股票資訊','內部資訊','機構買賣','近期相關消息'])
 st.sidebar.markdown('''
