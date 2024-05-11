@@ -7,48 +7,116 @@ import io
 import folium
 import pytz
 import geopy
+import re
 from googletrans import Translator
 from datetime import datetime
 from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
 
 #美股區
+  
+# 定义将字符串中的百分号去除并转换为小数的函数
+def clean_and_round(value):
+    if isinstance(value, str):
+        return float(value.strip('%')) / 100
+    return value
+
+# 定義將交易量字串轉換為數字的函數
+def convert_volume_string_to_numeric(volume_str):
+    if 'M' in volume_str:
+        return float(volume_str.replace('M', '')) * 1000000
+    elif 'B' in volume_str:
+        return float(volume_str.replace('B', '')) * 1000000000
+    else:
+        return float(volume_str)
 
 #今日熱門
 @st.cache_data
 def hot_stock():
-    hot_stock = res.get("https://finance.yahoo.com/most-active/")
-    f = io.StringIO(hot_stock.text)
-    hot_stock_df = pd.read_html(f)
-    hot_stock_df = hot_stock_df[0]
-    hot_stock_df = hot_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])
-    st.subheader("今日交易量前25名")
-    st.write(hot_stock_df)
-    return hot_stock_df
-
+    try:
+        hot_stock_res = res.get("https://finance.yahoo.com/most-active/")
+        f = io.StringIO(hot_stock_res.text)
+        hot_stock_df_list = pd.read_html(f)
+        hot_stock_df = hot_stock_df_list[0]
+        hot_stock_df = hot_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])
+        st.subheader("今日交易量前25名")
+        # 提取 Volume 列的值並轉換為數字
+        hot_stock_df['Numeric Volume'] = hot_stock_df['Volume'].apply(convert_volume_string_to_numeric)
+        symbols = hot_stock_df['Symbol']
+        numeric_volumes = hot_stock_df['Numeric Volume']
+        # 根据 Volume 列的值降序排列数据
+        hot_stock_df_sorted = hot_stock_df.sort_values(by='Numeric Volume', ascending=False)
+        symbols_sorted = hot_stock_df_sorted['Symbol']
+        numeric_volumes_sorted = hot_stock_df_sorted['Numeric Volume']      
+        # 定义所有长条的统一颜色为蓝色
+        color = 'rgba(0,0,255,0.6)'  # 蓝色
+        # 绘制长条图
+        fig = go.Figure(data=[go.Bar(x=symbols_sorted, y=numeric_volumes_sorted, marker=dict(color=color))])
+        fig.update_layout(xaxis_title='Symbol', yaxis_title='Volume')
+        st.plotly_chart(fig)
+        with st.expander("展開數據"):
+            st.write(hot_stock_df_sorted)
+        return hot_stock_df_sorted
+    except Exception as e:
+        st.error(f"獲取發生錯誤：{str(e)}")
+        return None
+      
 #今日上漲
 @st.cache_data
 def gainers_stock():
-    gainers_stock = res.get("https://finance.yahoo.com/gainers")
-    f = io.StringIO(gainers_stock.text)
-    gainers_stock_df = pd.read_html(f)
-    gainers_stock_df = gainers_stock_df[0]
-    gainers_stock_df = gainers_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])
-    st.subheader("今日上漲前25名")
-    st.write(gainers_stock_df)
-    return gainers_stock_df
-
+    try:
+        gainers_stock_res = res.get("https://finance.yahoo.com/gainers")
+        f = io.StringIO(gainers_stock_res.text)
+        gainers_stock_df_list = pd.read_html(f)
+        gainers_stock_df = gainers_stock_df_list[0]
+        gainers_stock_df = gainers_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])       
+        # 清理和保留小数点
+        gainers_stock_df['% Change'] = gainers_stock_df['% Change'].map(clean_and_round)
+        # 去除无法转换为数字的行
+        gainers_stock_df = gainers_stock_df.dropna(subset=['% Change'])
+        # 根据 % Change 列的值降序排列数据
+        gainers_stock_df_sorted = gainers_stock_df.sort_values(by='% Change', ascending=False)
+        st.subheader("今日上漲前25名")  
+        # 定义所有长条的统一颜色为绿色
+        color = 'rgba(0,255,0,0.6)'  # 绿色
+        # 绘制长条图
+        fig = go.Figure(data=[go.Bar(x=gainers_stock_df_sorted['Symbol'], y=gainers_stock_df_sorted['% Change'], marker=dict(color=color))])
+        fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change')
+        st.plotly_chart(fig)
+        with st.expander("展開數據"):
+            st.write(gainers_stock_df_sorted)
+        return gainers_stock_df_list
+    except Exception as e:
+        print(f"獲取發生錯誤：{str(e)}")
+        return None
 #今日下跌
 @st.cache_data
 def loser_stock():
-    loser_stock = res.get("https://finance.yahoo.com/losers/")
-    f = io.StringIO(loser_stock.text)
-    loser_stock_df = pd.read_html(f)
-    loser_stock_df = loser_stock_df[0]
-    loser_stock_df = loser_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])
-    st.subheader("今日下跌前25名")
-    st.write(loser_stock_df)
-    return loser_stock_df
+    try:
+        loser_stock_res = res.get("https://finance.yahoo.com/losers")
+        f = io.StringIO(loser_stock_res.text)
+        loser_stock_df_list = pd.read_html(f)
+        loser_stock_df = loser_stock_df_list[0]
+        loser_stock_df = loser_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])       
+        # 清理和保留小数点
+        loser_stock_df['% Change'] = loser_stock_df['% Change'].map(clean_and_round)
+        # 去除无法转换为数字的行
+        loser_stock_df = loser_stock_df.dropna(subset=['% Change'])
+        # 根据 % Change 列的值降序排列数据
+        loser_stock_df_sorted = loser_stock_df.sort_values(by='% Change', ascending=True)
+        st.subheader("今日下跌前25名")  
+        # 定义所有长条的统一颜色为绿色
+        color = 'rgba(255,0,0,0.6)'  # 深红色
+        # 绘制长条图
+        fig = go.Figure(data=[go.Bar(x=loser_stock_df_sorted['Symbol'], y=loser_stock_df_sorted['% Change'], marker=dict(color=color))])
+        fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change')
+        st.plotly_chart(fig)
+        with st.expander("展開數據"):
+            st.write(loser_stock_df_sorted)
+        return loser_stock_df_list
+    except Exception as e:
+        print(f"獲取發生錯誤：{str(e)}")
+        return None
 
 # 獲取公司基本資訊
 @st.cache_data
@@ -287,8 +355,9 @@ def plot_volume_chart(stock_data,symbols):
 
 #公司盈利
 @st.cache_data
-def stock_earnings_dates(symbol):
+def stock_earnings_date(symbol):
     translation = {
+        #'Earnings Date':'日期',
         'EPS Estimate':'每股盈利預估',
         'Reported EPS':'實際每股盈利'
         }
@@ -1146,7 +1215,7 @@ elif market == '美國' and options == '股票資訊':
     start_date = st.date_input('開始日期')
     end_date = st.date_input('結束日期' ,key='end_date')
     if st.button('查詢'):
-        stock_earnings_dates(symbol)
+        stock_earnings_date(symbol)
         stock_actions(symbol,start_date,end_date)
         stock_major_holder(symbol)
         stock_institutional_holders(symbol)
