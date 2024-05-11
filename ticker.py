@@ -261,7 +261,8 @@ def stock_data(symbol,start_date,end_date):
     try:
         stock_data = yf.download(symbol,start=start_date,end=end_date)
         st.subheader('交易數據')
-        st.write(stock_data)
+        with st.expander("展開數據"):
+            st.write(stock_data)
         return stock_data
     except Exception as e:
         st.error(f"無法獲取{symbol}-交易數據：{str(e)}")
@@ -323,7 +324,8 @@ def stock_data_vs(symbols,start_date,end_date):
         stock_data = yf.download(symbols, start=start_date, end=end_date)
         stock_data = stock_data.drop(['Open','High','Low','Close'], axis=1)
         st.subheader('交易數據')
-        st.write(stock_data)
+        with st.expander("展開數據"):
+            st.write(stock_data)
         return stock_data
     except Exception as e:
         st.error(f"無法獲取交易數據: {str(e)}")
@@ -584,7 +586,7 @@ def twse_20():
 @st.cache_data
 def tpex_20():
     url = res.get('https://www.tpex.org.tw/openapi/v1/tpex_volume_rank')
-    url = pd.read_json(url.text)
+    url = pd.read_json(url.text).head(20)
     st.subheader('今日櫃買交易量前20名')
     st.write(url)
 
@@ -931,7 +933,8 @@ def twse_data(symbol,start_date,end_date):
         symbol = symbol + ".tw"
         twse_data = yf.download(symbol,start=start_date,end=end_date)
         st.subheader('交易數據')
-        st.write(twse_data)
+        with st.expander("展開數據"):
+            st.write(twse_data)
         return twse_data
     except Exception as e:
         st.error(f"無法獲取{symbol}-交易數據：{str(e)}")
@@ -993,7 +996,8 @@ def twse_data_vs(symbols,start_date,end_date):
         twse_data = yf.download(symbols, start=start_date, end=end_date)
         twse_data = twse_data.drop(['Open','High','Low','Close'], axis=1)
         st.subheader('交易數據')
-        st.write(twse_data)
+        with st.expander("展開數據"):
+            st.write(twse_data)
         return twse_data
     except Exception as e:
         st.error(f"無法獲取交易數據: {str(e)}")
@@ -1030,7 +1034,8 @@ def tpex_data(symbol,start_date,end_date):
         symbol = symbol + ".two"
         tpex_data = yf.download(symbol,start=start_date,end=end_date)
         st.subheader('交易數據')
-        st.write(tpex_data)
+        with st.expander("展開數據"):
+            st.write(tpex_data)
         return tpex_data
     except Exception as e:
         st.error(f"無法獲取{symbol}-交易數據：{str(e)}")
@@ -1087,12 +1092,13 @@ def tpex_trend(tpex_data):
 
 #股票比較
 @st.cache_data
-def tpex_data_vs(symbols,start_date,end_date):
+def tpex_data_vs(symbols, start_date, end_date):
     try:
         tpex_data = yf.download(symbols, start=start_date, end=end_date)
         tpex_data = tpex_data.drop(['Open','High','Low','Close'], axis=1)
         st.subheader('交易數據')
-        st.write(tpex_data)
+        with st.expander("展開數據"):
+            st.write(tpex_data)
         return tpex_data
     except Exception as e:
         st.error(f"無法獲取交易數據: {str(e)}")
@@ -1179,10 +1185,11 @@ elif market == '美國' and options == '公司財報查詢':
 elif market == '美國' and options == '交易數據':
     select = st.selectbox('選擇查詢資訊',['個股','多股'])
     if select == '個股':
-        symbol = st.text_input('輸入美股代號', key='single_stock').upper()
-        start_date = st.date_input('開始日期', key='start_date')
-        end_date = st.date_input('结束日期', key='end_date')
-        mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
+        with st.expander("展開輸入參數"):
+            symbol = st.text_input('輸入美股代號', key='single_stock').upper()
+            start_date = st.date_input('開始日期', key='start_date')
+            end_date = st.date_input('结束日期', key='end_date')
+            mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
         if st.button('查詢'):
             stock_data = stock_data(symbol, start_date, end_date)
             if stock_data is not None:
@@ -1192,14 +1199,16 @@ elif market == '美國' and options == '交易數據':
             else:
                 st.error(f"無法獲取{symbol}交易數據")
     elif select == '多股':
-        symbol1 = st.text_input('輸入美股代號 1', key='stock1').upper()
-        symbol2 = st.text_input('輸入美股代號 2', key='stock2').upper()
-        symbol3 = st.text_input('輸入美股代號 3', key='stock3').upper()
-        symbol4 = st.text_input('輸入美股代號 4', key='stock4').upper()
-        symbol5 = st.text_input('輸入美股代號 5', key='stock5').upper()
-        symbol6 = st.text_input('輸入美股代號 6', key='stock6').upper()
-        start_date_multi = st.date_input('開始日期', key='start_date_multi')
-        end_date_multi = st.date_input('結束日期', key='end_date_multi')
+        with st.expander("展開輸入參數"):
+            symbol1 = st.text_input('輸入美股代號 1', key='stock1').upper()
+            symbol2 = st.text_input('輸入美股代號 2', key='stock2').upper()
+            symbol3 = st.text_input('輸入美股代號 3', key='stock3').upper()
+            symbol4 = st.text_input('輸入美股代號 4', key='stock4').upper()
+            symbol5 = st.text_input('輸入美股代號 5', key='stock5').upper()
+            symbol6 = st.text_input('輸入美股代號 6', key='stock6').upper()
+            start_date_multi = st.date_input('開始日期', key='start_date_multi')
+            end_date_multi = st.date_input('結束日期', key='end_date_multi')
+            # 在 expander 之外執行相關程式碼
         if st.button('比較'):
             symbols = [s.upper() for s in [symbol1, symbol2, symbol3, symbol4, symbol5, symbol6] if s]
             if symbols:
@@ -1211,9 +1220,10 @@ elif market == '美國' and options == '交易數據':
                     st.error('請輸入至少一隻美股')
 
 elif market == '美國' and options == '股票資訊':
-    symbol = st.text_input('輸入美股代號').upper()
-    start_date = st.date_input('開始日期')
-    end_date = st.date_input('結束日期' ,key='end_date')
+    with st.expander("展開輸入參數"):
+        symbol = st.text_input('輸入美股代號').upper()
+        start_date = st.date_input('開始日期')
+        end_date = st.date_input('結束日期' ,key='end_date')
     if st.button('查詢'):
         stock_earnings_date(symbol)
         stock_actions(symbol,start_date,end_date)
@@ -1223,8 +1233,9 @@ elif market == '美國' and options == '股票資訊':
 elif market == '美國' and options == '內部資訊':
     select = st.selectbox('選擇查詢資訊',['內部交易','內部購買','內部持股'])
     if select == '內部交易':
-        symbol = st.text_input('輸入美股代號')
-        head = int(st.number_input('輸入欲查詢資料筆數'))
+        with st.expander("展開輸入參數"):
+            symbol = st.text_input('輸入美股代號')
+            head = int(st.number_input('輸入欲查詢資料筆數'))
         if st.button('查詢'):
             stock_insider_transactions(symbol,head) 
     elif select == '內部購買':
@@ -1237,8 +1248,9 @@ elif market == '美國' and options == '內部資訊':
             stock_insider_roster_holders(symbol)
 
 elif market == '美國' and options == '機構買賣':
-    symbol = st.text_input('輸入美股代號').upper()
-    head = int(st.number_input('輸入查詢資料筆數'))
+    with st.expander("展開輸入參數"):
+        symbol = st.text_input('輸入美股代號').upper()
+        head = int(st.number_input('輸入查詢資料筆數'))
     if st.button('查詢'):
         stock_upgrades_downgrades(symbol, head)
 
@@ -1330,10 +1342,11 @@ elif market == '台灣' and options == '交易數據':
     select = st.selectbox('選擇查市場',['上市','櫃買'])
     select2 = st.selectbox('選擇查詢資訊',['個股','多股'])
     if select == '上市' and select2 == '個股':
-        symbol = st.text_input('輸台股上市代號', key='single_stock')
-        start_date = st.date_input('開始日期', key='start_date')
-        end_date = st.date_input('结束日期', key='end_date')
-        mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
+        with st.expander("展開輸入參數"):
+            symbol = st.text_input('輸台股上市代號', key='single_stock')
+            start_date = st.date_input('開始日期', key='start_date')
+            end_date = st.date_input('结束日期', key='end_date')
+            mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
         if st.button('查詢'):
             twse_data = twse_data(symbol, start_date, end_date)
             if twse_data is not None:
@@ -1343,14 +1356,15 @@ elif market == '台灣' and options == '交易數據':
             else:
                 st.error(f"無法獲取{symbol}交易數據or{symbol}為上櫃興櫃公司")
     elif select == '上市' and select2 == '多股':
-        symbol1 = st.text_input('輸台股上市代號 1', key='stock1')+ ".tw"
-        symbol2 = st.text_input('輸台股上市代號 2', key='stock2')+ ".tw"
-        symbol3 = st.text_input('輸台股上市代號 3', key='stock3')+ ".tw"
-        symbol4 = st.text_input('輸台股上市代號 4', key='stock4')+ ".tw"
-        symbol5 = st.text_input('輸台股上市代號 5', key='stock5')+ ".tw"
-        symbol6 = st.text_input('輸台股上市代號 6', key='stock6')+ ".tw"
-        start_date_multi = st.date_input('開始日期', key='start_date_multi')
-        end_date_multi = st.date_input('結束日期', key='end_date_multi')
+        with st.expander("展開輸入參數"):
+            symbol1 = st.text_input('輸台股上市代號 1', key='stock1')+ ".tw"
+            symbol2 = st.text_input('輸台股上市代號 2', key='stock2')+ ".tw"
+            symbol3 = st.text_input('輸台股上市代號 3', key='stock3')+ ".tw"
+            symbol4 = st.text_input('輸台股上市代號 4', key='stock4')+ ".tw"
+            symbol5 = st.text_input('輸台股上市代號 5', key='stock5')+ ".tw"
+            symbol6 = st.text_input('輸台股上市代號 6', key='stock6')+ ".tw"
+            start_date_multi = st.date_input('開始日期', key='start_date_multi')
+            end_date_multi = st.date_input('結束日期', key='end_date_multi')
         if st.button('比較'):
             symbols = [s.upper() for s in [symbol1, symbol2, symbol3, symbol4, symbol5, symbol6] if s]
             if symbols:
@@ -1361,10 +1375,11 @@ elif market == '台灣' and options == '交易數據':
                 else:
                     st.error('請輸入至少一隻台股上市')
     if select == '櫃買' and select2 == '個股':
-        symbol = st.text_input('輸台股櫃買代號', key='single_stock')
-        start_date = st.date_input('開始日期', key='start_date')
-        end_date = st.date_input('结束日期', key='end_date')
-        mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
+        with st.expander("展開輸入參數"):
+            symbol = st.text_input('輸台股櫃買代號', key='single_stock')
+            start_date = st.date_input('開始日期', key='start_date')
+            end_date = st.date_input('结束日期', key='end_date')
+            mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
         if st.button('查詢'):
             tpex_data = tpex_data(symbol, start_date, end_date)
             if tpex_data is not None:
@@ -1374,14 +1389,15 @@ elif market == '台灣' and options == '交易數據':
             else:
                 st.error(f"無法獲取{symbol}交易數據or{symbol}為上市公司")
     elif select == '櫃買' and select2 == '多股':
-        symbol1 = st.text_input('輸台股櫃買代號 1', key='stock1')+".two"
-        symbol2 = st.text_input('輸台股櫃買代號 2', key='stock2')+".two"
-        symbol3 = st.text_input('輸台股櫃買代號 3', key='stock3')+".two"
-        symbol4 = st.text_input('輸台股櫃買代號 4', key='stock4')+".two"
-        symbol5 = st.text_input('輸台股櫃買代號 5', key='stock5')+".two"
-        symbol6 = st.text_input('輸台股櫃買代號 6', key='stock6')+".two"
-        start_date_multi = st.date_input('開始日期', key='start_date_multi')
-        end_date_multi = st.date_input('結束日期', key='end_date_multi')
+        with st.expander("展開輸入參數"):
+            symbol1 = st.text_input('輸台股櫃買代號 1', key='stock1')+".two"
+            symbol2 = st.text_input('輸台股櫃買代號 2', key='stock2')+".two"
+            symbol3 = st.text_input('輸台股櫃買代號 3', key='stock3')+".two"
+            symbol4 = st.text_input('輸台股櫃買代號 4', key='stock4')+".two"
+            symbol5 = st.text_input('輸台股櫃買代號 5', key='stock5')+".two"
+            symbol6 = st.text_input('輸台股櫃買代號 6', key='stock6')+".two"
+            start_date_multi = st.date_input('開始日期', key='start_date_multi')
+            end_date_multi = st.date_input('結束日期', key='end_date_multi')
         if st.button('比較'):
             symbols = [s.upper() for s in [symbol1, symbol2, symbol3, symbol4, symbol5, symbol6] if s]
             if symbols:
