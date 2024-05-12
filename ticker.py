@@ -1462,20 +1462,20 @@ elif market == '台灣' and options == '今日熱門' :
     tpex_20()
 
 elif market == '台灣' and options == '公司基本資訊' :
-    select = st.selectbox('選擇市場',['上市','櫃買'])
+    select = st.selectbox('選擇市場',['上市','櫃檯'])
     if select == '上市':
         symbol = st.text_input('輸入台股上市代號')
         if st.button('查詢'):
             twse_info = twse_info(symbol)
             display_info(twse_info)
-    elif select == '櫃買':
-        symbol = st.text_input('輸入台股櫃買代號')
+    elif select == '櫃檯':
+        symbol = st.text_input('輸入台股櫃檯代號')
         if st.button('查詢'):
             tpex_info = tpex_info(symbol)
             display_info(tpex_info)
 
 elif market == '台灣' and options == '公司財報查詢':
-    select = st.selectbox('選擇市場',['上市','櫃買'])
+    select = st.selectbox('選擇市場',['上市','櫃檯'])
     select2 = st.selectbox('選擇查詢資訊',['年報','季報','月營收'])
     if select == '上市' and select2 == '年報':
         symbol = st.text_input('輸入台股上市代號')
@@ -1505,8 +1505,8 @@ elif market == '台灣' and options == '公司財報查詢':
         symbol = st.text_input('輸入台股上市代號')
         if st.button('查詢'):
             twse_month(symbol)
-    elif select == '櫃買' and select2 == '年報':
-        symbol = st.text_input('輸入台股櫃買代號')
+    elif select == '櫃檯' and select2 == '年報':
+        symbol = st.text_input('輸入台股櫃檯代號')
         if st.button('查詢'):
             balance_sheet_tpex, income_statement_tpex, cash_flow_tpex = financial_statements_tpex(symbol)
             if balance_sheet_tpex is not None:
@@ -1517,7 +1517,7 @@ elif market == '台灣' and options == '公司財報查詢':
                 cashflow_tpex(cash_flow_tpex)
             else:
                 st.error(f"無法獲取{symbol}-年報")
-    elif select == '櫃買' and select2 == '季報':
+    elif select == '櫃檯' and select2 == '季報':
         symbol = st.text_input('輸入台股櫃買代號')
         if st.button('查詢'):
             balance_sheet_quarterly_tpex, income_statement_quarterly_tpex, cash_flow_quarterly_tpex = financial_statements_quarterly_tpex(symbol)
@@ -1529,13 +1529,13 @@ elif market == '台灣' and options == '公司財報查詢':
                 cashflow_quarterly_tpex(cash_flow_quarterly_tpex)
             else:
                 st.error(f"無法獲取{symbol}-季報")
-    elif select == '櫃買' and select2 == '月營收':
-        symbol = st.text_input('輸入台股櫃買代號')
+    elif select == '櫃檯' and select2 == '月營收':
+        symbol = st.text_input('輸入台股櫃檯代號')
         if st.button('查詢'):
             tpex_month(symbol)
 
 elif market == '台灣' and options == '交易數據':
-    select = st.selectbox('選擇查市場',['上市','櫃買'])
+    select = st.selectbox('選擇查市場',['上市','櫃檯'])
     select2 = st.selectbox('選擇查詢資訊',['個股','多股'])
     if select == '上市' and select2 == '個股':
         with st.expander("展開輸入參數"):
@@ -1570,9 +1570,9 @@ elif market == '台灣' and options == '交易數據':
                     twse_volume_chart(twse_data, symbols)
                 else:
                     st.error('請輸入至少一隻台股上市')
-    if select == '櫃買' and select2 == '個股':
+    if select == '櫃檯' and select2 == '個股':
         with st.expander("展開輸入參數"):
-            symbol = st.text_input('輸台股櫃買代號', key='single_stock')
+            symbol = st.text_input('輸台股櫃檯代號', key='single_stock')
             start_date = st.date_input('開始日期', key='start_date')
             end_date = st.date_input('结束日期', key='end_date')
             mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
@@ -1584,14 +1584,14 @@ elif market == '台灣' and options == '交易數據':
                 tpex_trend(tpex_data)
             else:
                 st.error(f"無法獲取{symbol}交易數據or{symbol}為上市公司")
-    elif select == '櫃買' and select2 == '多股':
+    elif select == '櫃檯' and select2 == '多股':
         with st.expander("展開輸入參數"):
-            symbol1 = st.text_input('輸台股櫃買代號 1', key='stock1')+".two"
-            symbol2 = st.text_input('輸台股櫃買代號 2', key='stock2')+".two"
-            symbol3 = st.text_input('輸台股櫃買代號 3', key='stock3')+".two"
-            symbol4 = st.text_input('輸台股櫃買代號 4', key='stock4')+".two"
-            symbol5 = st.text_input('輸台股櫃買代號 5', key='stock5')+".two"
-            symbol6 = st.text_input('輸台股櫃買代號 6', key='stock6')+".two"
+            symbol1 = st.text_input('輸台股櫃檯代號 1', key='stock1')+".two"
+            symbol2 = st.text_input('輸台股櫃檯代號 2', key='stock2')+".two"
+            symbol3 = st.text_input('輸台股櫃檯代號 3', key='stock3')+".two"
+            symbol4 = st.text_input('輸台股櫃檯代號 4', key='stock4')+".two"
+            symbol5 = st.text_input('輸台股櫃檯代號 5', key='stock5')+".two"
+            symbol6 = st.text_input('輸台股櫃檯代號 6', key='stock6')+".two"
             start_date_multi = st.date_input('開始日期', key='start_date_multi')
             end_date_multi = st.date_input('結束日期', key='end_date_multi')
         if st.button('比較'):
@@ -1602,4 +1602,4 @@ elif market == '台灣' and options == '交易數據':
                     tpex_trend_vs(tpex_data, symbols)
                     tpex_volume_chart(tpex_data, symbols)
                 else:
-                    st.error('請輸入至少一隻台股櫃買')
+                    st.error('請輸入至少一隻台股櫃檯')
