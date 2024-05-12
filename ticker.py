@@ -8,6 +8,7 @@ import folium
 import pytz
 import geopy
 import re
+import numpy as np
 from googletrans import Translator
 from datetime import datetime
 from streamlit_folium import folium_static
@@ -31,61 +32,75 @@ def convert_volume_string_to_numeric(volume_str):
         return float(volume_str)
 
 #大盤指數
+@st.cache_data
 def plot_index(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
     nasdaq_data = yf.download('^IXIC', start=start_date)
     nasdaq_100_data = yf.download('^NDX', start=start_date)
     sp500_data = yf.download('^GSPC', start=start_date)
     dji_data = yf.download('^DJI', start=start_date)
-    Russell_2000_data = yf.download('^RUT', start=start_date)
+    Russell_2000_data = yf.download('^RUT', start=start_date)    
     # Extract Close prices
     nasdaq_close = nasdaq_data['Close']
     nasdaq_100_close = nasdaq_100_data['Close']
     sp500_close = sp500_data['Close']  
     dji_close = dji_data['Close']
-    Russell_2000_close = Russell_2000_data['Close']
+    Russell_2000_close = Russell_2000_data['Close']   
+    # Take the logarithm of the Close prices
+    nasdaq_log_close = np.log(nasdaq_close)
+    nasdaq_100_log_close = np.log(nasdaq_100_close)
+    sp500_log_close = np.log(sp500_close)
+    dji_log_close = np.log(dji_close)
+    Russell_2000_log_close = np.log(Russell_2000_close)  
     st.subheader('美股大盤＆中小企業市場走勢')
     # Create Plotly figure
     fig = go.Figure()   
-    # Add trace for Close price
-    fig.add_trace(go.Scatter(x=nasdaq_close.index, y=nasdaq_close.values, mode='lines', name='NASDAQ'))
-    fig.add_trace(go.Scatter(x=nasdaq_100_close.index, y=nasdaq_100_close.values, mode='lines', name='NASDAQ-100'))
-    fig.add_trace(go.Scatter(x=sp500_close.index, y=sp500_close.values, mode='lines', name='S&P 500'))
-    fig.add_trace(go.Scatter(x=dji_close.index, y=dji_close.values, mode='lines', name='DJIA'))
-    fig.add_trace(go.Scatter(x=Russell_2000_close.index, y=Russell_2000_close.values, mode='lines', name='Russell-2000'))
+    # Add trace for Log Close price
+    fig.add_trace(go.Scatter(x=nasdaq_log_close.index, y=nasdaq_log_close.values, mode='lines', name='NASDAQ'))
+    fig.add_trace(go.Scatter(x=nasdaq_100_log_close.index, y=nasdaq_100_log_close.values, mode='lines', name='NASDAQ-100'))
+    fig.add_trace(go.Scatter(x=sp500_log_close.index, y=sp500_log_close.values, mode='lines', name='S&P 500'))
+    fig.add_trace(go.Scatter(x=dji_log_close.index, y=dji_log_close.values, mode='lines', name='DJIA'))
+    fig.add_trace(go.Scatter(x=Russell_2000_log_close.index, y=Russell_2000_log_close.values, mode='lines', name='Russell-2000'))
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
+@st.cache_data
 def plot_foreign(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
     sp500_data = yf.download('^GSPC', start=start_date)
     sha_data = yf.download('000001.SS', start=start_date)
-    twse_data = yf.download('^TWII', start=start_date)
+    twse_data = yf.download('^TWII', start=start_date)   
     # Extract Close prices
     sp500_close = sp500_data['Close']
-    sha_close = sha_data['Close']*0.1384
-    twse_close = twse_data['Close']*0.0308
-    st.subheader('美股大盤＆海外大盤走勢(換算美金2024/5/12)')
+    sha_close = sha_data['Close']
+    twse_close = twse_data['Close']  
+    # Take the logarithm of the Close prices
+    sp500_log_close = np.log(sp500_close)
+    sha_log_close = np.log(sha_close)
+    twse_log_close = np.log(twse_close)  
+    st.subheader('美股大盤＆海外大盤走勢')
     # Create Plotly figure
     fig = go.Figure()   
-    # Add trace for Close price
-    fig.add_trace(go.Scatter(x=sp500_close.index, y=sp500_close.values, mode='lines', name='S&P 500'))
-    fig.add_trace(go.Scatter(x=sha_close.index, y=sha_close.values, mode='lines', name='上證指數'))
-    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'))
+    # Add trace for Log Close price
+    fig.add_trace(go.Scatter(x=sp500_log_close.index, y=sp500_log_close.values, mode='lines', name='S&P 500'))
+    fig.add_trace(go.Scatter(x=sha_log_close.index, y=sha_log_close.values, mode='lines', name='上證指數'))
+    fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
 #s&p 500 成分股
+@st.cache_data
 def sp500_dsymbol():
     url = res.get('https://zh.wikipedia.org/wiki/S%26P_500成份股列表')
     sp500 = pd.read_html(url.content, encoding='utf-8')
     st.write(sp500[0])
 
 #nasdaq100成分股
+@st.cache_data
 def nasdaq_100symbol():
     url = res.get('https://zh.wikipedia.org/wiki/納斯達克100指數')
     nasdaq_100 = pd.read_html(url.content, encoding='utf-8')
@@ -642,24 +657,32 @@ def display_news_links(symbol):
 
 # 台股區
 
+@st.cache_data
 def plot_index_tw(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
     twse_data = yf.download('^TWII', start=start_date)
     tpex_data = yf.download('^TWOII', start=start_date)
     tw50_data = yf.download('^TSE50', start=start_date)
+    
     # Extract Close prices
     twse_close = twse_data['Close']
     tpex_close = tpex_data['Close']
+    
+    # Take the logarithm of the Close prices
+    twse_log_close = np.log(twse_close)
+    tpex_log_close = np.log(tpex_close)
+    
     st.subheader('上市＆櫃檯走勢')
     # Create Plotly figure
     fig = go.Figure()   
-    # Add trace for Close price
-    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'))
-    fig.add_trace(go.Scatter(x=tpex_close.index, y=tpex_close.values, mode='lines', name='櫃檯指數'))
+    # Add trace for Log Close price
+    fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
+    fig.add_trace(go.Scatter(x=tpex_log_close.index, y=tpex_log_close.values, mode='lines', name='櫃檯指數'))
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
+
 
 def plot_foreign_asia(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
@@ -670,32 +693,52 @@ def plot_foreign_asia(start_date='2014-01-01'):
     kr_data = yf.download('^KS11', start=start_date)
     sin_data = yf.download('^STI', start=start_date)
     # Extract Close prices
-    sha_close = sha_data['Close']*4.4927
+    sha_close = sha_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
     twse_close = twse_data['Close']
-    jp_close = jp_data['Close']*0.2084
-    hk_close = hk_data['Close']*4.1549
-    kr_close = kr_data['Close']*0.0237
-    sin_close = sin_data['Close']*23.9665
+    jp_close = jp_data['Close'] * 0.2084    # 將日經指數轉換為新台幣
+    hk_close = hk_data['Close'] * 4.1549    # 將恒生指數轉換為新台幣
+    kr_close = kr_data['Close'] * 0.0237    # 將韓國綜合股價指數轉換為新台幣
+    sin_close = sin_data['Close'] * 23.9665 # 將新加坡海峽時報指數轉換為新台幣
+    # Take the logarithm of the Close prices
+    sha_log_close = np.log(sha_close)
+    twse_log_close = np.log(twse_close)
+    jp_log_close = np.log(jp_close)
+    hk_log_close = np.log(hk_close)
+    kr_log_close = np.log(kr_close)
+    sin_log_close = np.log(sin_close) 
     st.subheader('台股大盤＆亞洲大盤走勢(換算新台幣2024/5/12)')
     # Create Plotly figure
     fig = go.Figure()   
-    # Add trace for Close price
-    fig.add_trace(go.Scatter(x=sha_close.index, y=sha_close.values, mode='lines', name='上證指數'))
-    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'))
-    fig.add_trace(go.Scatter(x=jp_close.index, y=jp_close.values, mode='lines', name='日經指數'))
-    fig.add_trace(go.Scatter(x=hk_close.index, y=hk_close.values, mode='lines', name='恒生指數'))
-    fig.add_trace(go.Scatter(x=kr_close.index, y=kr_close.values, mode='lines', name='韓國綜合股價指數'))
-    fig.add_trace(go.Scatter(x=sin_close.index, y=sin_close.values, mode='lines', name='新加坡海峽時報指數'))
+    # Add trace for Log Close price
+    fig.add_trace(go.Scatter(x=sha_log_close.index, y=sha_log_close.values, mode='lines', name='上證指數'))
+    fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
+    fig.add_trace(go.Scatter(x=jp_log_close.index, y=jp_log_close.values, mode='lines', name='日經指數'))
+    fig.add_trace(go.Scatter(x=hk_log_close.index, y=hk_log_close.values, mode='lines', name='恒生指數'))
+    fig.add_trace(go.Scatter(x=kr_log_close.index, y=kr_log_close.values, mode='lines', name='韓國綜合股價指數'))
+    fig.add_trace(go.Scatter(x=sin_log_close.index, y=sin_log_close.values, mode='lines', name='新加坡海峽時報指數'))
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
 #sti成分股
+@st.cache_data
 def sti_symbol():
-    url = res.get('https://zh.wikipedia.org/wiki/新加坡海峽時報指數')
+    url = res.get('https://tw.tradingview.com/symbols/TVC-STI/components/')
     sti = pd.read_html(url.content, encoding='utf-8')
-    st.write(sti[1])
+    st.write(sti[0])
+
+@st.cache_data
+def hsi_symbol():
+    url = res.get('https://tw.tradingview.com/symbols/HSI-HSI/components/')
+    hsi = pd.read_html(url.content,encoding='utf-8')
+    st.write(hsi[0])
+
+@st.cache_data
+def n225_symbol():
+    url = res.get('https://zh.wikipedia.org/zh-tw/日经平均指数')
+    n225 = pd.read_html(url.content,encoding='utf-8')
+    st.write(n225[4])
 
 #成交量前二十名證券
 @st.cache_data
@@ -1402,6 +1445,10 @@ elif market == '台灣' and options == '大盤指數':
      with st.expander("顯示成分股"):
          st.write('新加坡海峽時報指數成份股')
          sti_symbol()
+         st.write('恒生指數成份股')
+         hsi_symbol()
+         st.write('日經指數成份股')
+         n225_symbol()
 
 elif market == '台灣' and options == '今日熱門' :
     twse_20()
