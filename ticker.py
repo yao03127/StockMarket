@@ -66,7 +66,7 @@ def plot_foreign(start_date='2014-01-01'):
     # Extract Close prices
     sp500_close = sp500_data['Close']
     sha_close = sha_data['Close']*0.1384
-    twse_close = twse_data['Close']*0.246
+    twse_close = twse_data['Close']*0.0308
     st.subheader('美股大盤＆海外大盤走勢(換算美金2024/5/12)')
     # Create Plotly figure
     fig = go.Figure()   
