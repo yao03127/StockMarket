@@ -39,18 +39,21 @@ def plot_index(start_date='2014-01-01'):
     nasdaq_100_data = yf.download('^NDX', start=start_date)
     sp500_data = yf.download('^GSPC', start=start_date)
     dji_data = yf.download('^DJI', start=start_date)
+    brk_data = yf.download('BRK-A', start=start_date)
     Russell_2000_data = yf.download('^RUT', start=start_date)    
     # Extract Close prices
     nasdaq_close = nasdaq_data['Close']
     nasdaq_100_close = nasdaq_100_data['Close']
     sp500_close = sp500_data['Close']  
     dji_close = dji_data['Close']
+    brk_close = brk_data['Close']
     Russell_2000_close = Russell_2000_data['Close']   
     # Take the logarithm of the Close prices
     nasdaq_log_close = np.log(nasdaq_close)
     nasdaq_100_log_close = np.log(nasdaq_100_close)
     sp500_log_close = np.log(sp500_close)
     dji_log_close = np.log(dji_close)
+    brk_log_close = np.log(brk_close)
     Russell_2000_log_close = np.log(Russell_2000_close)  
     st.subheader('美股大盤＆中小企業市場走勢')
     # Create Plotly figure
@@ -60,6 +63,7 @@ def plot_index(start_date='2014-01-01'):
     fig.add_trace(go.Scatter(x=nasdaq_100_log_close.index, y=nasdaq_100_log_close.values, mode='lines', name='NASDAQ-100'))
     fig.add_trace(go.Scatter(x=sp500_log_close.index, y=sp500_log_close.values, mode='lines', name='S&P 500'))
     fig.add_trace(go.Scatter(x=dji_log_close.index, y=dji_log_close.values, mode='lines', name='DJIA'))
+    fig.add_trace(go.Scatter(x=brk_log_close.index, y=brk_log_close.values, mode='lines', name='Berkshire Hathaway Inc.'))
     fig.add_trace(go.Scatter(x=Russell_2000_log_close.index, y=Russell_2000_log_close.values, mode='lines', name='Russell-2000'))
     # Update layout
     fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
@@ -414,12 +418,13 @@ def stock_data_vs(symbols,start_date,end_date):
         return None
 
 @st.cache_data
-def plot_trend_vs(stock_data,symbols):
+def plot_trend_vs(stock_data, symbols):
     fig = go.Figure()
     for symbol in symbols:
         if symbol in stock_data.columns.get_level_values(1):
             df = stock_data.xs(symbol, level=1, axis=1)
-            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close'], mode='lines', name=symbol))
+            df['Adj Close Log'] = np.log(df['Adj Close'])  # 對 Adj Close 進行對數轉換
+            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close Log'], mode='lines', name=symbol))
     fig.update_layout(xaxis_title='日期', yaxis_title='價格')
     st.subheader('趨勢比較圖')
     fig.layout.update(xaxis_rangeslider_visible=True)
@@ -1175,7 +1180,8 @@ def twse_trend_vs(twse_data,symbols):
     for symbol in symbols:
         if symbol in twse_data.columns.get_level_values(1):
             df = twse_data.xs(symbol, level=1, axis=1)
-            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close'], mode='lines', name=symbol))
+            df['Adj Close Log'] = np.log(df['Adj Close'])  # 對 Adj Close 進行對數轉換
+            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close Log'], mode='lines', name=symbol))
     fig.update_layout(xaxis_title='日期', yaxis_title='價格')
     st.subheader('趨勢比較圖')
     fig.layout.update(xaxis_rangeslider_visible=True)
@@ -1276,7 +1282,8 @@ def tpex_trend_vs(tpex_data,symbols):
     for symbol in symbols:
         if symbol in tpex_data.columns.get_level_values(1):
             df = tpex_data.xs(symbol, level=1, axis=1)
-            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close'], mode='lines', name=symbol))
+            df['Adj Close Log'] = np.log(df['Adj Close'])  # 對 Adj Close 進行對數轉換
+            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close Log'], mode='lines', name=symbol))
     fig.update_layout(xaxis_title='日期', yaxis_title='價格')
     st.subheader('趨勢比較圖')
     fig.layout.update(xaxis_rangeslider_visible=True)
