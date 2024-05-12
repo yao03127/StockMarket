@@ -30,6 +30,73 @@ def convert_volume_string_to_numeric(volume_str):
     else:
         return float(volume_str)
 
+#大盤指數
+def plot_index(start_date='2014-01-01'):
+    # Fetch historical data for S&P 500
+    nasdaq_data = yf.download('^IXIC', start=start_date)
+    nasdaq_100_data = yf.download('^NDX', start=start_date)
+    sp500_data = yf.download('^GSPC', start=start_date)
+    dji_data = yf.download('^DJI', start=start_date)
+    Russell_2000_data = yf.download('^RUT', start=start_date)
+    # Extract Close prices
+    nasdaq_close = nasdaq_data['Close']
+    nasdaq_100_close = nasdaq_100_data['Close']
+    sp500_close = sp500_data['Close']  
+    dji_close = dji_data['Close']
+    Russell_2000_close = Russell_2000_data['Close']
+    st.subheader('美股大盤＆中小企業市場走勢')
+    # Create Plotly figure
+    fig = go.Figure()   
+    # Add trace for Close price
+    fig.add_trace(go.Scatter(x=nasdaq_close.index, y=nasdaq_close.values, mode='lines', name='NASDAQ'))
+    fig.add_trace(go.Scatter(x=nasdaq_100_close.index, y=nasdaq_100_close.values, mode='lines', name='NASDAQ-100'))
+    fig.add_trace(go.Scatter(x=sp500_close.index, y=sp500_close.values, mode='lines', name='S&P 500'))
+    fig.add_trace(go.Scatter(x=dji_close.index, y=dji_close.values, mode='lines', name='DJIA'))
+    fig.add_trace(go.Scatter(x=Russell_2000_close.index, y=Russell_2000_close.values, mode='lines', name='Russell-2000'))
+    # Update layout
+    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.layout.update(xaxis_rangeslider_visible=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+def plot_foreign(start_date='2014-01-01'):
+    # Fetch historical data for S&P 500
+    sp500_data = yf.download('^GSPC', start=start_date)
+    sha_data = yf.download('000001.SS', start=start_date)
+    twse_data = yf.download('^TWII', start=start_date)
+    # Extract Close prices
+    sp500_close = sp500_data['Close']
+    sha_close = sha_data['Close']*0.1384
+    twse_close = twse_data['Close']*0.246
+    st.subheader('美股大盤＆海外大盤走勢(換算美金2024/5/12)')
+    # Create Plotly figure
+    fig = go.Figure()   
+    # Add trace for Close price
+    fig.add_trace(go.Scatter(x=sp500_close.index, y=sp500_close.values, mode='lines', name='S&P 500'))
+    fig.add_trace(go.Scatter(x=sha_close.index, y=sha_close.values, mode='lines', name='上證指數'))
+    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'))
+    # Update layout
+    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.layout.update(xaxis_rangeslider_visible=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+#s&p 500 成分股
+def sp500_dsymbol():
+    url = res.get('https://zh.wikipedia.org/wiki/S%26P_500成份股列表')
+    sp500 = pd.read_html(url.content, encoding='utf-8')
+    st.write(sp500[0])
+
+#nasdaq100成分股
+def nasdaq_100symbol():
+    url = res.get('https://zh.wikipedia.org/wiki/納斯達克100指數')
+    nasdaq_100 = pd.read_html(url.content, encoding='utf-8')
+    st.write(nasdaq_100[2])
+
+#dji成分股
+def dji_symbol():
+    url = res.get('https://zh.wikipedia.org/zh-tw/道琼斯工业平均指数')
+    dji = pd.read_html(url.content, encoding='utf-8')
+    st.write(dji[2])
+
 #今日熱門
 @st.cache_data
 def hot_stock():
@@ -575,6 +642,61 @@ def display_news_links(symbol):
 
 # 台股區
 
+def plot_index_tw(start_date='2014-01-01'):
+    # Fetch historical data for S&P 500
+    twse_data = yf.download('^TWII', start=start_date)
+    tpex_data = yf.download('^TWOII', start=start_date)
+    tw50_data = yf.download('^TSE50', start=start_date)
+    # Extract Close prices
+    twse_close = twse_data['Close']
+    tpex_close = tpex_data['Close']*50
+    st.subheader('上市＆櫃檯走勢')
+    # Create Plotly figure
+    fig = go.Figure()   
+    # Add trace for Close price
+    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'))
+    fig.add_trace(go.Scatter(x=tpex_close.index, y=tpex_close.values, mode='lines', name='櫃檯指數'))
+    # Update layout
+    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.layout.update(xaxis_rangeslider_visible=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+def plot_foreign_asia(start_date='2014-01-01'):
+    # Fetch historical data for S&P 500
+    sha_data = yf.download('000001.SS', start=start_date)
+    twse_data = yf.download('^TWII', start=start_date)
+    jp_data = yf.download('^N225', start=start_date)
+    hk_data = yf.download('^HSI', start=start_date)
+    kr_data = yf.download('^KS11', start=start_date)
+    sin_data = yf.download('^STI', start=start_date)
+    # Extract Close prices
+    sha_close = sha_data['Close']*4.4927
+    twse_close = twse_data['Close']
+    jp_close = jp_data['Close']*0.2084
+    hk_close = hk_data['Close']*4.1549
+    kr_close = kr_data['Close']*0.0237
+    sin_close = sin_data['Close']*23.9665
+    st.subheader('台股大盤＆亞洲大盤走勢(換算新台幣2024/5/12)')
+    # Create Plotly figure
+    fig = go.Figure()   
+    # Add trace for Close price
+    fig.add_trace(go.Scatter(x=sha_close.index, y=sha_close.values, mode='lines', name='上證指數'))
+    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'))
+    fig.add_trace(go.Scatter(x=jp_close.index, y=jp_close.values, mode='lines', name='日經指數'))
+    fig.add_trace(go.Scatter(x=hk_close.index, y=hk_close.values, mode='lines', name='恒生指數'))
+    fig.add_trace(go.Scatter(x=kr_close.index, y=kr_close.values, mode='lines', name='韓國綜合股價指數'))
+    fig.add_trace(go.Scatter(x=sin_close.index, y=sin_close.values, mode='lines', name='新加坡海峽時報指數'))
+    # Update layout
+    fig.update_layout(xaxis_title='Date', yaxis_title='Close Price')
+    fig.layout.update(xaxis_rangeslider_visible=True)
+    st.plotly_chart(fig, use_container_width=True)
+
+#sti成分股
+def sti_symbol():
+    url = res.get('https://zh.wikipedia.org/wiki/新加坡海峽時報指數')
+    sti = pd.read_html(url.content, encoding='utf-8')
+    st.write(sti[1])
+
 #成交量前二十名證券
 @st.cache_data
 def twse_20():
@@ -819,6 +941,7 @@ def financial_statements_quarterly_twse(symbol):
         st.error(f"獲取{symbol}-財報發生錯誤or{symbol}為上櫃興櫃公司：{str(e)}")
         return None, None, None
     
+@st.cache_data
 def financial_statements_quarterly_tpex(symbol):
     try:
         symbol = symbol + ".two"  # 在股票代碼後加上.tw
@@ -1134,7 +1257,7 @@ st.header(' ',divider="rainbow")
 
 st.sidebar.title('Menu')
 market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
-options = st.sidebar.selectbox('選擇功能', ['今日熱門','公司基本資訊','公司財報查詢','交易數據','股票資訊','內部資訊','機構買賣','近期相關消息'])
+options = st.sidebar.selectbox('選擇功能', ['大盤指數','今日熱門','公司基本資訊','公司財報查詢','交易數據','股票資訊','內部資訊','機構買賣','近期相關消息'])
 st.sidebar.markdown('''
     免責聲明：        
     1. K 線圖請以美股角度來觀看（        
@@ -1144,7 +1267,19 @@ st.sidebar.markdown('''
     3. 有些數據僅限美股，台股尚未支援  
 ''')
 
-if market == '美國' and options == '今日熱門':
+if market == '美國' and options == '大盤指數':
+    plot_index(start_date='2014-01-01')
+    with st.expander("顯示成分股"):
+        st.write('S&P500成份股')
+        sp500_dsymbol()
+        st.write('NASDAQ100成份股')
+        nasdaq_100symbol()
+        st.write('道瓊工業成份股')
+        dji_symbol()
+    plot_foreign(start_date='2014-01-01')
+    st.markdown("[詳細名詞解釋](https://www.oanda.com/bvi-ft/lab-education/indices/us-4index/)")
+
+elif market == '美國' and options == '今日熱門':
     hot_stock()
     gainers_stock()
     loser_stock()
@@ -1260,6 +1395,13 @@ elif market == '美國' and options == '近期相關消息' :
     if st.button('查詢'):
         display_news_table(symbol)
         display_news_links(symbol)
+
+elif market == '台灣' and options == '大盤指數':
+     plot_index_tw(start_date='2014-01-01')
+     plot_foreign_asia(start_date='2014-01-01')
+     with st.expander("顯示成分股"):
+         st.write('新加坡海峽時報指數成份股')
+         sti_symbol()
 
 elif market == '台灣' and options == '今日熱門' :
     twse_20()
