@@ -1518,7 +1518,7 @@ elif market == '台灣' and options == '公司財報查詢':
             else:
                 st.error(f"無法獲取{symbol}-年報")
     elif select == '櫃檯' and select2 == '季報':
-        symbol = st.text_input('輸入台股櫃買代號')
+        symbol = st.text_input('輸入台股櫃檯代號')
         if st.button('查詢'):
             balance_sheet_quarterly_tpex, income_statement_quarterly_tpex, cash_flow_quarterly_tpex = financial_statements_quarterly_tpex(symbol)
             if balance_sheet_quarterly_tpex is not None:
