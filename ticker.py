@@ -649,7 +649,7 @@ def plot_index_tw(start_date='2014-01-01'):
     tw50_data = yf.download('^TSE50', start=start_date)
     # Extract Close prices
     twse_close = twse_data['Close']
-    tpex_close = tpex_data['Close']*50
+    tpex_close = tpex_data['Close']
     st.subheader('上市＆櫃檯走勢')
     # Create Plotly figure
     fig = go.Figure()   
