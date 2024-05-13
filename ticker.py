@@ -782,7 +782,7 @@ def plot_pct_tw(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
     twse_data = yf.download('^TWII', start=start_date)
     sha_data = yf.download('000001.SS', start=start_date)
-    shz_data = yf.download('000001.SS', start=start_date)
+    shz_data = yf.download('399001.SZ', start=start_date)
     jp_data = yf.download('^N225', start=start_date)
     hk_data = yf.download('^HSI', start=start_date)
     kr_data = yf.download('^KS11', start=start_date)
