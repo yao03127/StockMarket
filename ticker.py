@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 import streamlit as st
 import plotly.graph_objs as go
+import plotly.express as px
 import requests as res
 import io
 import folium
@@ -15,21 +16,6 @@ from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
 
 #美股區
-  
-# 定义将字符串中的百分号去除并转换为小数的函数
-def clean_and_round(value):
-    if isinstance(value, str):
-        return float(value.strip('%')) / 100
-    return value
-
-# 定義將交易量字串轉換為數字的函數
-def convert_volume_string_to_numeric(volume_str):
-    if 'M' in volume_str:
-        return float(volume_str.replace('M', '')) * 1000000
-    elif 'B' in volume_str:
-        return float(volume_str.replace('B', '')) * 1000000000
-    else:
-        return float(volume_str)
 
 #大盤指數
 @st.cache_data
@@ -55,7 +41,7 @@ def plot_index(start_date='2014-01-01'):
     dji_log_close = np.log(dji_close)
     brk_log_close = np.log(brk_close)
     Russell_2000_log_close = np.log(Russell_2000_close)  
-    st.subheader('美股大盤＆中小企業市場走勢')
+    st.subheader('美股大盤＆中小企業市場走勢(2014-01-01～今天)')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
@@ -71,50 +57,187 @@ def plot_index(start_date='2014-01-01'):
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
+def plot_pct(start_date='2014-01-01'):
+    # Fetch historical data for S&P 500
+    nasdaq_data = yf.download('^IXIC', start=start_date)
+    nasdaq_100_data = yf.download('^NDX', start=start_date)
+    sp500_data = yf.download('^GSPC', start=start_date)
+    dji_data = yf.download('^DJI', start=start_date)
+    brk_data = yf.download('BRK-A', start=start_date)
+    Russell_2000_data = yf.download('^RUT', start=start_date)    
+    # Extract Close prices
+    nasdaq_close = nasdaq_data['Close']
+    nasdaq_100_close = nasdaq_100_data['Close']
+    sp500_close = sp500_data['Close']  
+    dji_close = dji_data['Close']
+    brk_close = brk_data['Close']
+    Russell_2000_close = Russell_2000_data['Close']   
+    # Calculate total returns
+    nasdaq_total_return = ((nasdaq_close.iloc[-1] - nasdaq_close.iloc[0]) / nasdaq_close.iloc[0]) * 100
+    nasdaq_100_total_return = ((nasdaq_100_close.iloc[-1] - nasdaq_100_close.iloc[0]) / nasdaq_100_close.iloc[0]) * 100
+    sp500_total_return = ((sp500_close.iloc[-1] - sp500_close.iloc[0]) / sp500_close.iloc[0]) * 100
+    dji_total_return = ((dji_close.iloc[-1] - dji_close.iloc[0]) / dji_close.iloc[0]) * 100
+    brk_total_return = ((brk_close.iloc[-1] - brk_close.iloc[0]) / brk_close.iloc[0]) * 100
+    Russell_2000_total_return = ((Russell_2000_close.iloc[-1] - Russell_2000_close.iloc[0]) / Russell_2000_close.iloc[0]) * 100
+    # Create Plotly figure
+    fig = go.Figure()   
+    # Create a dictionary to store the results
+    returns_dict = {
+        'NASDAQ': nasdaq_total_return,
+        'NASDAQ-100': nasdaq_100_total_return,
+        'S&P 500': sp500_total_return,
+        'DJIA': dji_total_return,
+        'Berkshire Hathaway Inc.': brk_total_return,
+        'Russell-2000': Russell_2000_total_return
+    }
+    # Sort the dictionary by values in descending order
+    sorted_returns = dict(sorted(returns_dict.items(), key=lambda item: item[1], reverse=True))
+    # Add traces for Total Returns
+    fig.add_trace(go.Bar(x=list(sorted_returns.keys()),
+                         y=list(sorted_returns.values()),
+                         marker_color=['blue', 'green', 'red', 'purple', 'orange', 'brown']))
+    # Update layout
+    st.subheader('美股大盤＆中小企業市場報酬率％(2014-01-01～今天)')
+    fig.update_layout(yaxis_title='Total Return (%)')
+    st.plotly_chart(fig, use_container_width=True)
+
+@st.cache_data
 def plot_foreign(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
     sp500_data = yf.download('^GSPC', start=start_date)
     sha_data = yf.download('000001.SS', start=start_date)
+    shz_data = yf.download('399001.SZ', start=start_date)
     twse_data = yf.download('^TWII', start=start_date)   
     # Extract Close prices
     sp500_close = sp500_data['Close']
-    sha_close = sha_data['Close']
-    twse_close = twse_data['Close']  
+    sha_close = sha_data['Close']*0.1382
+    shz_close = shz_data['Close']*0.1382
+    twse_close = twse_data['Close']*0.0308  
     # Take the logarithm of the Close prices
     sp500_log_close = np.log(sp500_close)
     sha_log_close = np.log(sha_close)
+    shz_log_close = np.log(shz_close)
     twse_log_close = np.log(twse_close)  
-    st.subheader('美股大盤＆海外大盤走勢')
+    st.subheader('美股大盤＆海外大盤走勢(2014-01-01～今天)')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
     fig.add_trace(go.Scatter(x=sp500_log_close.index, y=sp500_log_close.values, mode='lines', name='S&P 500'))
     fig.add_trace(go.Scatter(x=sha_log_close.index, y=sha_log_close.values, mode='lines', name='上證指數'))
+    fig.add_trace(go.Scatter(x=shz_log_close.index, y=shz_log_close.values, mode='lines', name='深證指數'))
     fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
     # Update layout
     fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
+@st.cache_data
+def plot_pct_foreign(start_date='2014-01-01'):
+    # Fetch historical data for S&P 500
+    sp500_data = yf.download('^GSPC', start=start_date)
+    sha_data = yf.download('000001.SS', start=start_date)
+    shz_data = yf.download('399001.SZ', start=start_date)
+    twse_data = yf.download('^TWII', start=start_date)  
+    # Extract Close prices
+    sp500_close = sp500_data['Close']  
+    sha_close = sha_data['Close'] * 0.1382
+    shz_close = shz_data['Close'] * 0.1382
+    twse_close = twse_data['Close'] * 0.0308  
+    # Calculate total returns
+    sp500_total_return = ((sp500_close.iloc[-1] - sp500_close.iloc[0]) / sp500_close.iloc[0]) * 100
+    sha_total_return = ((sha_close.iloc[-1] - sha_close.iloc[0]) / sha_close.iloc[0]) * 100
+    shz_total_return = ((shz_close.iloc[-1] - shz_close.iloc[0]) / shz_close.iloc[0]) * 100
+    twse_total_return = ((twse_close.iloc[-1] - twse_close.iloc[0]) / twse_close.iloc[0]) * 100
+    # Create Plotly figure
+    fig = go.Figure()   
+    # Create a dictionary to store the results
+    returns_dict = {
+        'S&P 500': sp500_total_return,
+        '上證指數': sha_total_return,
+        '深證指數': shz_total_return,
+        '加權指數': twse_total_return
+    }
+    # Sort the dictionary by values in descending order
+    sorted_returns = dict(sorted(returns_dict.items(), key=lambda item: item[1], reverse=True))
+    # Add traces for Total Returns
+    fig.add_trace(go.Bar(x=list(sorted_returns.keys()),
+                         y=list(sorted_returns.values()),
+                         marker_color=['blue', 'green', 'red', 'purple']))
+    # Update layout
+    st.subheader('美股大盤＆海外大盤報酬率％(2014-01-01～今天)')
+    fig.update_layout(yaxis_title='Total Return (%)')
+    st.plotly_chart(fig, use_container_width=True)
+
 #s&p 500 成分股
 @st.cache_data
 def sp500_dsymbol():
-    url = res.get('https://zh.wikipedia.org/wiki/S%26P_500成份股列表')
-    sp500 = pd.read_html(url.content, encoding='utf-8')
-    st.write(sp500[0])
+    # 從維基百科頁面獲取數據
+    url = 'https://zh.wikipedia.org/wiki/S%26P_500成份股列表'
+    response = res.get(url) 
+    # 檢查請求是否成功
+    if response.status_code == 200:
+        # 解析 HTML 表格
+        sp500 = pd.read_html(response.content, encoding='utf-8')    
+        # 提取產業類別
+        df = sp500[0]
+        st.write(df)
+        industries = df['全球行業分類標準部門'].value_counts()
+        colors = px.colors.qualitative.Plotly
+        # 繪製統計圖
+        fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
+        fig.update_layout(xaxis_title='全球行業分類標準部門', yaxis_title='數量', width=600, height=300)   
+        # 顯示統計圖
+        st.write('S&P500產業統計')
+        st.plotly_chart(fig) 
+        # 顯示數據表
+    else:
+        st.error('無法獲取數據')
 
 #nasdaq100成分股
 @st.cache_data
 def nasdaq_100symbol():
-    url = res.get('https://zh.wikipedia.org/wiki/納斯達克100指數')
-    nasdaq_100 = pd.read_html(url.content, encoding='utf-8')
-    st.write(nasdaq_100[2])
+    # 從維基百科頁面獲取數據
+    url = 'https://zh.wikipedia.org/wiki/納斯達克100指數'
+    response = res.get(url) 
+    # 檢查請求是否成功
+    if response.status_code == 200:
+        # 解析 HTML 表格
+        nas100 = pd.read_html(response.content, encoding='utf-8')    
+        # 提取產業類別
+        df = nas100[2]
+        st.write(df)
+        industries = df['全球行業分類標準部門'].value_counts()
+        colors = px.colors.qualitative.Plotly
+        # 繪製統計圖
+        fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
+        fig.update_layout(xaxis_title='全球行業分類標準部門', yaxis_title='數量', width=600, height=300)   
+        # 顯示統計圖
+        st.write('NASDAQ-100產業統計')
+        st.plotly_chart(fig) 
+        # 顯示數據表
+    else:
+        st.error('無法獲取數據')
 
 #dji成分股
 def dji_symbol():
     url = res.get('https://zh.wikipedia.org/zh-tw/道琼斯工业平均指数')
     dji = pd.read_html(url.content, encoding='utf-8')
     st.write(dji[2])
+
+# 定义将字符串中的百分号去除并转换为小数的函数
+def clean_and_round(value):
+    if isinstance(value, str):
+        return float(value.strip('%')) / 100
+    return value
+
+# 定義將交易量字串轉換為數字的函數
+def convert_volume_string_to_numeric(volume_str):
+    if 'M' in volume_str:
+        return float(volume_str.replace('M', '')) * 1000000
+    elif 'B' in volume_str:
+        return float(volume_str.replace('B', '')) * 1000000000
+    else:
+        return float(volume_str)
 
 #今日熱門
 @st.cache_data
@@ -446,16 +569,16 @@ def plot_volume_chart(stock_data,symbols):
 @st.cache_data
 def stock_earnings_date(symbol):
     translation = {
-        #'Earnings Date':'日期',
-        'EPS Estimate':'每股盈利預估',
-        'Reported EPS':'實際每股盈利'
-        }
+        'Earnings Date': '日期',
+        'EPS Estimate': '每股盈利預估',
+        'Reported EPS': '實際每股盈利'
+    } 
     ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    earnings_dates = ticker.earnings_dates
-    earnings_dates = earnings_dates.rename(columns=translation)
-    st.subheader(f'{symbol}-盈利資訊')  # 使用函數參數中的 symbol
-    earnings_dates = st.write(earnings_dates)
-    return earnings_dates
+    earnings = ticker.earnings_dates  # 獲取盈利資訊
+    # 轉換列名
+    earnings = earnings.rename(columns=translation)
+    st.write(earnings)
+
 
 #股息/股票分割
 @st.cache_data
@@ -479,7 +602,7 @@ def stock_actions(symbol, start_date, end_date):
     except Exception as e:
         st.error(f"無法獲取{symbol}-股息/股票分割：{str(e)}")
         return None
-   
+
 #股權架構
 @st.cache_data
 def stock_major_holder(symbol):
@@ -667,29 +790,29 @@ def plot_index_tw(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
     twse_data = yf.download('^TWII', start=start_date)
     tpex_data = yf.download('^TWOII', start=start_date)
-    tw50_data = yf.download('^TSE50', start=start_date)
-    
+    tw50_data = yf.download('0050.TW', start=start_date)   
     # Extract Close prices
     twse_close = twse_data['Close']
     tpex_close = tpex_data['Close']
-    
+    tw50_close = tw50_data['Close']
     # Take the logarithm of the Close prices
     twse_log_close = np.log(twse_close)
     tpex_log_close = np.log(tpex_close)
-    
-    st.subheader('上市＆櫃檯走勢')
+    tw50_log_close = np.log(tw50_close)
+    st.subheader('上市＆櫃檯&0050走勢(2014-01-01～今天)')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
     fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
     fig.add_trace(go.Scatter(x=tpex_log_close.index, y=tpex_log_close.values, mode='lines', name='櫃檯指數'))
+    fig.add_trace(go.Scatter(x=tw50_log_close.index, y=tw50_log_close.values, mode='lines', name='0050'))
     # Update layout
     fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
-
-def plot_foreign_asia(start_date='2014-01-01'):
+@st.cache_data
+def plot_tw_asia(start_date='2014-01-01'):
     # Fetch historical data for S&P 500
     sha_data = yf.download('000001.SS', start=start_date)
     twse_data = yf.download('^TWII', start=start_date)
@@ -711,7 +834,7 @@ def plot_foreign_asia(start_date='2014-01-01'):
     hk_log_close = np.log(hk_close)
     kr_log_close = np.log(kr_close)
     sin_log_close = np.log(sin_close) 
-    st.subheader('台股大盤＆亞洲大盤走勢(換算新台幣2024/5/12)')
+    st.subheader('台股大盤＆亞洲大盤走勢(2014-01-01～今天)')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
@@ -726,39 +849,202 @@ def plot_foreign_asia(start_date='2014-01-01'):
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
+@st.cache_data
+def plot_pct_tw(start_date='2014-01-01'):
+    # Fetch historical data for S&P 500
+    twse_data = yf.download('^TWII', start=start_date)
+    sha_data = yf.download('000001.SS', start=start_date)
+    shz_data = yf.download('000001.SS', start=start_date)
+    jp_data = yf.download('^N225', start=start_date)
+    hk_data = yf.download('^HSI', start=start_date)
+    kr_data = yf.download('^KS11', start=start_date)
+    sin_data = yf.download('^STI', start=start_date) 
+    # Extract Close prices
+    sha_close = sha_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
+    shz_close = shz_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
+    twse_close = twse_data['Close']
+    jp_close = jp_data['Close'] * 0.2084    # 將日經指數轉換為新台幣
+    hk_close = hk_data['Close'] * 4.1549    # 將恒生指數轉換為新台幣
+    kr_close = kr_data['Close'] * 0.0237    # 將韓國綜合股價指數轉換為新台幣
+    sin_close = sin_data['Close'] * 23.9665 # 將新加坡海峽時報指數轉換為新台幣
+    # Calculate total returns
+    twse_total_return = ((twse_close.iloc[-1] - twse_close.iloc[0]) / twse_close.iloc[0]) * 100
+    shz_total_return = ((shz_close.iloc[-1] - shz_close.iloc[0]) / shz_close.iloc[0]) * 100
+    sha_total_return = ((sha_close.iloc[-1] - sha_close.iloc[0]) / sha_close.iloc[0]) * 100
+    jp_total_return = ((jp_close.iloc[-1] - jp_close.iloc[0]) / jp_close.iloc[0]) * 100
+    hk_total_return = ((hk_close.iloc[-1] - hk_close.iloc[0]) / hk_close.iloc[0]) * 100
+    kr_total_return = ((kr_close.iloc[-1] - kr_close.iloc[0]) / kr_close.iloc[0]) * 100
+    sin_total_return = ((sin_close.iloc[-1] - sin_close.iloc[0]) / sin_close.iloc[0]) * 100
+    # Create Plotly figure
+    fig = go.Figure()   
+    # Create a dictionary to store the results
+    returns_dict = {
+        '上證指數': sha_total_return,
+        '深證指數': shz_total_return,
+        '恒生指數': hk_total_return,
+        '韓國綜合股價指數': kr_total_return,
+        '新加坡海峽時報指數': sin_total_return,
+        '日經指數': jp_total_return,
+        '加權指數': twse_total_return,
+    }
+    # Sort the dictionary by values in descending order
+    sorted_returns = dict(sorted(returns_dict.items(), key=lambda item: item[1], reverse=True))
+    # Add traces for Total Returns
+    fig.add_trace(go.Bar(x=list(sorted_returns.keys()),
+                         y=list(sorted_returns.values()),
+                         marker_color=['blue', 'green', 'red', 'purple','brown','orange','yellow']))
+    # Update layout
+    st.subheader('台股大盤＆亞洲大盤報酬率％(2014-01-01～今天)')
+    fig.update_layout(yaxis_title='Total Return (%)')
+    st.plotly_chart(fig, use_container_width=True)
+
 #sti成分股
 @st.cache_data
 def sti_symbol():
-    url = res.get('https://tw.tradingview.com/symbols/TVC-STI/components/')
-    sti = pd.read_html(url.content, encoding='utf-8')
-    st.write(sti[0])
+    # 從維基百科頁面獲取數據
+    url = 'https://tw.tradingview.com/symbols/TVC-STI/components/'
+    response = res.get(url) 
+    # 檢查請求是否成功
+    if response.status_code == 200:
+        # 解析 HTML 表格
+        sti = pd.read_html(response.content, encoding='utf-8')    
+        # 提取產業類別
+        df = sti[0]
+        st.write(df)
+        industries = df['部門'].value_counts()
+        colors = px.colors.qualitative.Plotly
+        # 繪製統計圖
+        fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
+        fig.update_layout(xaxis_title='部門', yaxis_title='數量', width=600, height=300)   
+        # 顯示統計圖
+        st.write('新加坡海峽指數產業統計')
+        st.plotly_chart(fig) 
+        # 顯示數據表
+    else:
+        st.error('無法獲取數據')
 
 @st.cache_data
 def hsi_symbol():
-    url = res.get('https://tw.tradingview.com/symbols/HSI-HSI/components/')
-    hsi = pd.read_html(url.content,encoding='utf-8')
-    st.write(hsi[0])
+    # 從維基百科頁面獲取數據
+    url = 'https://tw.tradingview.com/symbols/HSI-HSI/components/'
+    response = res.get(url) 
+    # 檢查請求是否成功
+    if response.status_code == 200:
+        # 解析 HTML 表格
+        hsi = pd.read_html(response.content, encoding='utf-8')    
+        # 提取產業類別
+        df = hsi[0]
+        st.write(df)
+        industries = df['部門'].value_counts()
+        colors = px.colors.qualitative.Plotly
+        # 繪製統計圖
+        fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
+        fig.update_layout(xaxis_title='部門', yaxis_title='數量', width=600, height=300)   
+        # 顯示統計圖
+        st.write('恒生指數產業統計')
+        st.plotly_chart(fig) 
+        # 顯示數據表
+    else:
+        st.error('無法獲取數據')
 
 @st.cache_data
 def n225_symbol():
-    url = res.get('https://zh.wikipedia.org/zh-tw/日经平均指数')
-    n225 = pd.read_html(url.content,encoding='utf-8')
-    st.write(n225[4])
+    # 從維基百科頁面獲取數據
+    url = 'https://zh.wikipedia.org/zh-tw/日经平均指数'
+    response = res.get(url) 
+    # 檢查請求是否成功
+    if response.status_code == 200:
+        # 解析 HTML 表格
+        n225 = pd.read_html(response.content, encoding='utf-8')    
+        # 提取產業類別
+        df = n225[4]
+        st.write(df)
+        industries = df['行業'].value_counts()
+        colors = px.colors.qualitative.Plotly
+        # 繪製統計圖
+        fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
+        fig.update_layout(xaxis_title='行業', yaxis_title='數量', width=600, height=300)   
+        # 顯示統計圖
+        st.write('日經指數產業統計')
+        st.plotly_chart(fig) 
+        # 顯示數據表
+    else:
+        st.error('無法獲取數據')
+
+#深證指數成分股
+def shz_symbol():
+    # 從維基百科頁面獲取數據
+    url = 'https://zh.wikipedia.org/zh-tw/深圳证券交易所成份股价指数'
+    response = res.get(url) 
+    # 檢查請求是否成功
+    if response.status_code == 200:
+        # 解析 HTML 表格
+        shz = pd.read_html(response.content, encoding='utf-8')    
+        # 提取產業類別
+        df = shz[1]
+        st.write(df)
+        industries = df['所屬行業'].value_counts()
+        colors = px.colors.qualitative.Plotly
+        # 繪製統計圖
+        fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
+        fig.update_layout(xaxis_title='所屬行業', yaxis_title='數量', width=600, height=300)   
+        # 顯示統計圖
+        st.write('深證指數產業統計')
+        st.plotly_chart(fig) 
+        # 顯示數據表
+    else:
+        st.error('無法獲取數據')
 
 #成交量前二十名證券
 @st.cache_data
 def twse_20():
-    url = res.get('https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX20')
-    url = pd.read_json(url.text)
-    st.subheader('今日上市交易量前20名')
-    st.write(url)
+    # Get data from the API
+    response = res.get('https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX20')
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()      
+        # Create DataFrame from the retrieved data
+        df = pd.DataFrame(data) 
+        # Convert TradeVolume column to numeric for sorting
+        df['TradeVolume'] = pd.to_numeric(df['TradeVolume'])
+        # Sort DataFrame by TradeVolume in descending order
+        df_sorted = df.sort_values(by='TradeVolume', ascending=False)
+        # Plot the bar chart
+        fig = go.Figure(data=[go.Bar(x=df_sorted['Name'], y=df_sorted['TradeVolume'], marker_color='rgba(0,0,255,0.6)')])
+        fig.update_layout(xaxis_title='Name', yaxis_title='TradeVolume')
+        # Display the bar chart
+        st.subheader('今日上市交易量前20名')
+        st.plotly_chart(fig)
+        # Display the data table
+        with st.expander("展開數據"):
+            st.write(df_sorted)
+    else:
+        st.error('Failed to fetch data from the API')
 
 @st.cache_data
 def tpex_20():
-    url = res.get('https://www.tpex.org.tw/openapi/v1/tpex_volume_rank')
-    url = pd.read_json(url.text).head(20)
-    st.subheader('今日櫃買交易量前20名')
-    st.write(url)
+    # Get data from the API
+    response = res.get('https://www.tpex.org.tw/openapi/v1/tpex_volume_rank')
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()      
+        # Create DataFrame from the retrieved data
+        df = pd.DataFrame(data) 
+        # Convert TradeVolume column to numeric for sorting
+        df['TradingVolume'] = pd.to_numeric(df['TradingVolume'])
+        # Sort DataFrame by TradeVolume in descending order
+        df_sorted = df.sort_values(by='TradingVolume', ascending=False).head(20)
+        # Plot the bar chart
+        fig = go.Figure(data=[go.Bar(x=df_sorted['CompanyName'], y=df_sorted['TradingVolume'], marker_color='rgba(255,0,0,0.6)')])
+        fig.update_layout(xaxis_title='CompanyName', yaxis_title='TradingVolume')
+        # Display the bar chart
+        st.subheader('今日櫃檯交易量前20名')
+        st.plotly_chart(fig)
+        # Display the data table
+        with st.expander("展開數據"):
+            st.write(df_sorted)
+    else:
+        st.error('Failed to fetch data from the API')
 
 #公司基本資訊
 @st.cache_data
@@ -1316,18 +1602,22 @@ st.sidebar.markdown('''
     2. 本平台僅適用於數據搜尋，不建議任何投資行為
     3. 有些數據僅限美股，台股尚未支援  
 ''')
+st.sidebar.text('大盤報酬率％計算方式')
+st.sidebar.text('(今天收盤價−2014-01-01收盤價)/2014-01-01收盤價*100%')
 
 if market == '美國' and options == '大盤指數':
     plot_index(start_date='2014-01-01')
-    with st.expander("顯示成分股"):
+    plot_pct(start_date='2014-01-01')
+    plot_foreign(start_date='2014-01-01')
+    plot_pct_foreign(start_date='2014-01-01')
+    with st.expander("顯示成份股"):
         st.write('S&P500成份股')
         sp500_dsymbol()
         st.write('NASDAQ100成份股')
         nasdaq_100symbol()
         st.write('道瓊工業成份股')
         dji_symbol()
-    plot_foreign(start_date='2014-01-01')
-    st.markdown("[詳細名詞解釋](https://www.oanda.com/bvi-ft/lab-education/indices/us-4index/)")
+    st.markdown("[美股指數名詞解釋](https://www.oanda.com/bvi-ft/lab-education/indices/us-4index/)")
 
 elif market == '美國' and options == '今日熱門':
     hot_stock()
@@ -1448,14 +1738,17 @@ elif market == '美國' and options == '近期相關消息' :
 
 elif market == '台灣' and options == '大盤指數':
      plot_index_tw(start_date='2014-01-01')
-     plot_foreign_asia(start_date='2014-01-01')
-     with st.expander("顯示成分股"):
+     plot_tw_asia(start_date='2014-01-01')
+     plot_pct_tw(start_date='2014-01-01')
+     with st.expander("顯示成份股"):
          st.write('新加坡海峽時報指數成份股')
          sti_symbol()
          st.write('恒生指數成份股')
          hsi_symbol()
          st.write('日經指數成份股')
          n225_symbol()
+         st.write('深證指數成份股')
+         shz_symbol()
 
 elif market == '台灣' and options == '今日熱門' :
     twse_20()
@@ -1518,7 +1811,7 @@ elif market == '台灣' and options == '公司財報查詢':
             else:
                 st.error(f"無法獲取{symbol}-年報")
     elif select == '櫃檯' and select2 == '季報':
-        symbol = st.text_input('輸入台股櫃檯代號')
+        symbol = st.text_input('輸入台股櫃買代號')
         if st.button('查詢'):
             balance_sheet_quarterly_tpex, income_statement_quarterly_tpex, cash_flow_quarterly_tpex = financial_statements_quarterly_tpex(symbol)
             if balance_sheet_quarterly_tpex is not None:
