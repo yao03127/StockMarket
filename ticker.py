@@ -569,7 +569,7 @@ def plot_volume_chart(stock_data,symbols):
 @st.cache_data
 def stock_earnings_date(symbol):
     translation = {
-        'Earnings Date': '日期',
+        #'Earnings Date': '日期',
         'EPS Estimate': '每股盈利預估',
         'Reported EPS': '實際每股盈利'
     } 
