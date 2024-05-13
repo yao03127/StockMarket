@@ -90,12 +90,13 @@ def plot_pct(start_date='2014-01-01'):
         'Berkshire Hathaway Inc.': brk_total_return,
         'Russell-2000': Russell_2000_total_return
     }
+    colors = px.colors.qualitative.Plotly
     # Sort the dictionary by values in descending order
     sorted_returns = dict(sorted(returns_dict.items(), key=lambda item: item[1], reverse=True))
     # Add traces for Total Returns
     fig.add_trace(go.Bar(x=list(sorted_returns.keys()),
                          y=list(sorted_returns.values()),
-                         marker_color=['blue', 'green', 'red', 'purple', 'orange', 'brown']))
+                         marker_color=colors))
     # Update layout
     st.subheader('美股大盤＆中小企業市場報酬率％(2014-01-01～今天)')
     fig.update_layout(yaxis_title='Total Return (%)')
@@ -157,12 +158,13 @@ def plot_pct_foreign(start_date='2014-01-01'):
         '深證指數': shz_total_return,
         '加權指數': twse_total_return
     }
+    colors = px.colors.qualitative.Plotly
     # Sort the dictionary by values in descending order
     sorted_returns = dict(sorted(returns_dict.items(), key=lambda item: item[1], reverse=True))
     # Add traces for Total Returns
     fig.add_trace(go.Bar(x=list(sorted_returns.keys()),
                          y=list(sorted_returns.values()),
-                         marker_color=['blue', 'green', 'red', 'purple']))
+                         marker_color=colors))
     # Update layout
     st.subheader('美股大盤＆海外大盤報酬率％(2014-01-01～今天)')
     fig.update_layout(yaxis_title='Total Return (%)')
@@ -565,70 +567,6 @@ def plot_volume_chart(stock_data,symbols):
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
-#公司盈利
-@st.cache_data
-def stock_earnings_date(symbol):
-    translation = {
-        #'Earnings Date': '日期',
-        'EPS Estimate': '每股盈利預估',
-        'Reported EPS': '實際每股盈利'
-    } 
-    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    earnings = ticker.earnings_dates  # 獲取盈利資訊
-    # 轉換列名
-    earnings = earnings.rename(columns=translation)
-    st.write(earnings)
-
-
-#股息/股票分割
-@st.cache_data
-def stock_actions(symbol, start_date, end_date):
-    translation = {
-        'Date':'日期',
-        'Dividends':'股息',
-        'Stock Splits':'股票拆分'
-        }
-    try:
-        ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-        start_date = datetime.combine(start_date, datetime.min.time())
-        end_date = datetime.combine(end_date, datetime.min.time())
-        start_date = pytz.utc.localize(start_date)
-        end_date = pytz.utc.localize(end_date)
-        actions = ticker.actions[start_date:end_date]  # 指定日期範圍
-        actions = actions.rename(columns=translation)
-        st.subheader(f'{symbol}-股息/股票分割')
-        st.write(actions)
-        return actions
-    except Exception as e:
-        st.error(f"無法獲取{symbol}-股息/股票分割：{str(e)}")
-        return None
-
-#股權架構
-@st.cache_data
-def stock_major_holder(symbol):
-    translation_columns = {'Breakdown':'持股情況','Value':'數值'}
-    translation_index = {
-        'insidersPercentHeld': '內部持股百分比',
-        'institutionsPercentHeld': '機構持股百分比',
-        'institutionsFloatPercentHeld': '流通股機構持股百分比',
-        'institutionsCount': '內部總持有股份',
-        'nstitutionsCount': '機構持股數量'
-        }
-    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    major_holders = ticker.major_holders
-    major_holders = major_holders.rename(columns=translation_columns, index=translation_index)  
-    #轉換成百分比
-    columns = ['內部持股百分比', '機構持股百分比', '流通股機構持股百分比']
-    for col in columns:
-        if col in major_holders.index:
-            major_holders.at[col, '數值'] = pd.to_numeric(major_holders.at[col, '數值'], errors='coerce')  # 将非数字转换为 NaN
-            major_holders.at[col, '數值'] = f"{major_holders.at[col, '數值']:.2%}" if pd.notna(major_holders.at[col, '數值']) else None
-        #千分位表示
-        major_holders['數值'] = major_holders['數值'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
-    st.subheader(f'{symbol}-股權架構')
-    st.write(major_holders)
-    return major_holders
-
 #機構持股
 @st.cache_data
 def stock_institutional_holders(symbol):
@@ -675,7 +613,7 @@ def stock_insider_transactions(symbol, head):
                 insider_transactions['股份'] = insider_transactions['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
                 insider_transactions['價值'] = insider_transactions['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
                 
-                st.subheader(f'{symbol}-內部交易')
+                st.subheader(f'{symbol}-內部動作')
                 st.write(insider_transactions)
             else:
                 st.warning("請輸入大於 0 的數字")
@@ -711,21 +649,11 @@ def stock_insider_purchases(symbol):
 #內部持股
 @st.cache_data
 def stock_insider_roster_holders(symbol):
-    translation = {
-        'Name':' ',
-        'Position':'職位',
-        'Most Recent Transaction':'最近的交易',
-        'Latest Transaction Date':'最新交易日期',
-        'Shares Owned Indirectly':'間接擁有股份',
-        'Position Indirect Date':'間接持股日期',
-        'Shares Owned Directly':'直接擁有股份',
-        'Position Direct Date':'直接持股日期'
-        }
     symbol = symbol
     symbol = yf.Ticker(symbol)
     insider_roster_holders = symbol.insider_roster_holders
-    insider_roster_holders = insider_roster_holders.rename(columns=translation)
     insider_roster_holders = insider_roster_holders.drop(columns='URL')
+    st.subheader('內部持股')
     insider_roster_holders = st.write(insider_roster_holders)
     return insider_roster_holders
 
@@ -889,10 +817,11 @@ def plot_pct_tw(start_date='2014-01-01'):
     }
     # Sort the dictionary by values in descending order
     sorted_returns = dict(sorted(returns_dict.items(), key=lambda item: item[1], reverse=True))
+    colors = px.colors.qualitative.Plotly
     # Add traces for Total Returns
     fig.add_trace(go.Bar(x=list(sorted_returns.keys()),
                          y=list(sorted_returns.values()),
-                         marker_color=['blue', 'green', 'red', 'purple','brown','orange','yellow']))
+                         marker_color=colors))
     # Update layout
     st.subheader('台股大盤＆亞洲大盤報酬率％(2014-01-01～今天)')
     fig.update_layout(yaxis_title='Total Return (%)')
@@ -1593,14 +1522,15 @@ st.header(' ',divider="rainbow")
 
 st.sidebar.title('Menu')
 market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
-options = st.sidebar.selectbox('選擇功能', ['大盤指數','今日熱門','公司基本資訊','公司財報查詢','交易數據','股票資訊','內部資訊','機構買賣','近期相關消息'])
+options = st.sidebar.selectbox('選擇功能', ['大盤指數','今日熱門','公司基本資訊','公司財報查詢','交易數據','內部資訊','機構買賣','近期相關消息'])
 st.sidebar.markdown('''
-    免責聲明：        
-    1. K 線圖請以美股角度來觀看（        
-        - 美股: 綠漲、紅跌）        
+免責聲明：        
+1. K 線圖請以美股角度來觀看      
+        - 美股: 綠漲、紅跌        
         - 台股: 綠跌、紅漲           
-    2. 本平台僅適用於數據搜尋，不建議任何投資行為
-    3. 有些數據僅限美股，台股尚未支援  
+2. 本平台僅適用於數據搜尋，不建議任何投資行為
+3. 有些數據僅限美股，台股尚未支援  
+4. 建議使用電腦或平板查詢數據  
 ''')
 st.sidebar.text('大盤報酬率％計算方式')
 st.sidebar.text('(今天收盤價−2014-01-01收盤價)/2014-01-01收盤價*100%')
@@ -1678,14 +1608,11 @@ elif market == '美國' and options == '交易數據':
             symbol1 = st.text_input('輸入美股代號 1', key='stock1').upper()
             symbol2 = st.text_input('輸入美股代號 2', key='stock2').upper()
             symbol3 = st.text_input('輸入美股代號 3', key='stock3').upper()
-            symbol4 = st.text_input('輸入美股代號 4', key='stock4').upper()
-            symbol5 = st.text_input('輸入美股代號 5', key='stock5').upper()
-            symbol6 = st.text_input('輸入美股代號 6', key='stock6').upper()
             start_date_multi = st.date_input('開始日期', key='start_date_multi')
             end_date_multi = st.date_input('結束日期', key='end_date_multi')
             # 在 expander 之外執行相關程式碼
         if st.button('比較'):
-            symbols = [s.upper() for s in [symbol1, symbol2, symbol3, symbol4, symbol5, symbol6] if s]
+            symbols = [s.upper() for s in [symbol1, symbol2, symbol3] if s]
             if symbols:
                 stock_data = stock_data_vs(symbols, start_date_multi, end_date_multi)
                 if stock_data is not None:
@@ -1694,39 +1621,20 @@ elif market == '美國' and options == '交易數據':
                 else:
                     st.error('請輸入至少一隻美股')
 
-elif market == '美國' and options == '股票資訊':
-    with st.expander("展開輸入參數"):
-        symbol = st.text_input('輸入美股代號').upper()
-        start_date = st.date_input('開始日期')
-        end_date = st.date_input('結束日期' ,key='end_date')
-    if st.button('查詢'):
-        stock_earnings_date(symbol)
-        stock_actions(symbol,start_date,end_date)
-        stock_major_holder(symbol)
-        stock_institutional_holders(symbol)
-
 elif market == '美國' and options == '內部資訊':
-    select = st.selectbox('選擇查詢資訊',['內部交易','內部購買','內部持股'])
-    if select == '內部交易':
-        with st.expander("展開輸入參數"):
-            symbol = st.text_input('輸入美股代號')
-            head = int(st.number_input('輸入欲查詢資料筆數'))
-        if st.button('查詢'):
-            stock_insider_transactions(symbol,head) 
-    elif select == '內部購買':
-        symbol = st.text_input('輸入美股代號')
-        if st.button('查詢'):
-            stock_insider_purchases(symbol)
-    elif select == '內部持股':
-        symbol = st.text_input('輸入美股代號')
-        if st.button('查詢'):
-            stock_insider_roster_holders(symbol)
+    symbol = st.text_input('輸入美股代號')
+    head = int(st.number_input('輸入欲查詢資料筆數'))
+    if st.button('查詢'):
+        stock_insider_transactions(symbol,head)
+        stock_insider_purchases(symbol)
+        stock_insider_roster_holders(symbol)
 
 elif market == '美國' and options == '機構買賣':
     with st.expander("展開輸入參數"):
         symbol = st.text_input('輸入美股代號').upper()
         head = int(st.number_input('輸入查詢資料筆數'))
     if st.button('查詢'):
+        stock_institutional_holders(symbol)
         stock_upgrades_downgrades(symbol, head)
 
 elif market == '美國' and options == '近期相關消息' :
@@ -1849,13 +1757,10 @@ elif market == '台灣' and options == '交易數據':
             symbol1 = st.text_input('輸台股上市代號 1', key='stock1')+ ".tw"
             symbol2 = st.text_input('輸台股上市代號 2', key='stock2')+ ".tw"
             symbol3 = st.text_input('輸台股上市代號 3', key='stock3')+ ".tw"
-            symbol4 = st.text_input('輸台股上市代號 4', key='stock4')+ ".tw"
-            symbol5 = st.text_input('輸台股上市代號 5', key='stock5')+ ".tw"
-            symbol6 = st.text_input('輸台股上市代號 6', key='stock6')+ ".tw"
             start_date_multi = st.date_input('開始日期', key='start_date_multi')
             end_date_multi = st.date_input('結束日期', key='end_date_multi')
         if st.button('比較'):
-            symbols = [s.upper() for s in [symbol1, symbol2, symbol3, symbol4, symbol5, symbol6] if s]
+            symbols = [s.upper() for s in [symbol1, symbol2, symbol3] if s]
             if symbols:
                 twse_data = twse_data_vs(symbols, start_date_multi, end_date_multi)
                 if twse_data is not None:
@@ -1882,13 +1787,10 @@ elif market == '台灣' and options == '交易數據':
             symbol1 = st.text_input('輸台股櫃檯代號 1', key='stock1')+".two"
             symbol2 = st.text_input('輸台股櫃檯代號 2', key='stock2')+".two"
             symbol3 = st.text_input('輸台股櫃檯代號 3', key='stock3')+".two"
-            symbol4 = st.text_input('輸台股櫃檯代號 4', key='stock4')+".two"
-            symbol5 = st.text_input('輸台股櫃檯代號 5', key='stock5')+".two"
-            symbol6 = st.text_input('輸台股櫃檯代號 6', key='stock6')+".two"
             start_date_multi = st.date_input('開始日期', key='start_date_multi')
             end_date_multi = st.date_input('結束日期', key='end_date_multi')
         if st.button('比較'):
-            symbols = [s.upper() for s in [symbol1, symbol2, symbol3, symbol4, symbol5, symbol6] if s]
+            symbols = [s.upper() for s in [symbol1, symbol2, symbol3] if s]
             if symbols:
                 tpex_data = tpex_data_vs(symbols, start_date_multi, end_date_multi)
                 if tpex_data is not None:
