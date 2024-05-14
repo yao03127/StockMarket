@@ -1322,7 +1322,9 @@ def twse_candle(twse_data, mav_days):
                                  open=twse_data['Open'],
                                  high=twse_data['High'],
                                  low=twse_data['Low'],
-                                 close=twse_data['Adj Close']))
+                                 close=twse_data['Adj Close'],
+                                 increasing_line_color= 'red', decreasing_line_color= 'green'
+                                 ))
     # 移動平均線
     mav5 = twse_data['Close'].rolling(window=5).mean()  # 5日mav
     mav10 = twse_data['Close'].rolling(window=10).mean()  # 10日mav
@@ -1424,7 +1426,9 @@ def tpex_candle(tpex_data, mav_days):
                                  open=tpex_data['Open'],
                                  high=tpex_data['High'],
                                  low=tpex_data['Low'],
-                                 close=tpex_data['Adj Close']))
+                                 close=tpex_data['Adj Close'],
+                                 increasing_line_color= 'red', decreasing_line_color= 'green'
+                                 ))
     # 移動平均線
     mav5 = tpex_data['Close'].rolling(window=5).mean()  # 5日mav
     mav10 = tpex_data['Close'].rolling(window=10).mean()  # 10日mav
@@ -1512,12 +1516,12 @@ market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
 options = st.sidebar.selectbox('選擇功能', ['大盤指數','今日熱門','公司基本資訊','公司財報查詢','交易數據','內部資訊','機構買賣','近期相關消息'])
 st.sidebar.markdown('''
 免責聲明：        
-1. K 線圖請以美股角度來觀看      
+1. K 線圖觀看角度      
         - 美股: 綠漲、紅跌        
         - 台股: 綠跌、紅漲           
 2. 本平台僅適用於數據搜尋，不建議任何投資行為
 3. 有些數據僅限美股，台股尚未支援  
-4. 建議使用電腦或平板查詢數據  
+4. 排版問題建議使用電腦查詢數據  
 ''')
 
 if market == '美國' and options == '大盤指數':
