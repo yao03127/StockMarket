@@ -607,31 +607,7 @@ def stock_insider_transactions(symbol, head):
             st.error(f"無法獲取{symbol}內部交易數據或數據為空")
     except Exception as e:
         st.error(f"獲取{symbol}內部交易數據時出錯：{str(e)}")
-
-# 內部購買
-@st.cache_data
-def stock_insider_purchases(symbol):
-    ticker = yf.Ticker(symbol)
-    insider_purchases = ticker.insider_purchases
-    #轉換成百分比
-    columns = ['% Net Shares Purchased (Sold)', '% Buy Shares', '% Sell Shares']
-    for col in columns:
-        if col in insider_purchases.index:
-            insider_purchases.at[col, 'Shares'] = pd.to_numeric(insider_purchases.at[col, 'Shares'], errors='coerce')  # 将非数字转换为 NaN
-            insider_purchases.at[col, 'Shares'] = f"{insider_purchases.at[col, 'Shares']:.2%}" if pd.notna(insider_purchases.at[col, 'Shares']) else None
-        #千分位表示
-        insider_purchases['Shares'] = insider_purchases['Shares'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
-    trans_column = insider_purchases['Insider Purchases Last 6m'] 
-    translator = Translator()  # 初始化 Translator
-    translated_texts = []
-    for text in trans_column:
-        translation = translator.translate(text, dest='zh-tw').text
-        translated_texts.append(translation)
-    insider_purchases['Insider Purchases Last 6m'] = translated_texts
-    st.subheader(f'{symbol}-內部購買')
-    st.write(insider_purchases)
-    return insider_purchases
-
+        
 #內部持股
 @st.cache_data
 def stock_insider_roster_holders(symbol):
@@ -1669,9 +1645,8 @@ elif market == '美國' and options == '內部資訊':
     head = int(st.number_input('輸入欲查詢資料筆數'))
     if st.button('查詢'):
         stock_insider_transactions(symbol,head)
-        stock_insider_purchases(symbol)
         stock_insider_roster_holders(symbol)
-
+        
 elif market == '美國' and options == '機構買賣':
     with st.expander("展開輸入參數"):
         symbol = st.text_input('輸入美股代號').upper()
