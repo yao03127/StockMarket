@@ -10,7 +10,6 @@ import pytz
 import geopy
 import re
 import numpy as np
-from googletrans import Translator
 from datetime import datetime
 from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
@@ -599,7 +598,7 @@ def stock_insider_transactions(symbol, head):
                 insider_transactions['股份'] = insider_transactions['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
                 insider_transactions['價值'] = insider_transactions['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
                 
-                st.subheader(f'{symbol}-內部動作')
+                st.subheader(f'{symbol}-最近{head}筆內部動作')
                 st.write(insider_transactions)
             else:
                 st.warning("請輸入大於 0 的數字")
@@ -658,7 +657,7 @@ def stock_upgrades_downgrades(symbol, head):
         if upgrades_downgrade is not None and not upgrades_downgrade.empty:
             if head > 0:
                 upgrades_downgrade = upgrades_downgrade.head(head)               
-                st.subheader(f'機構買賣{symbol}數據')
+                st.subheader(f'機構買賣{symbol}最近{head}筆數據')
                 st.write(upgrades_downgrade)
             else:
                 st.warning("請輸入大於 0 的數字")
@@ -1648,9 +1647,8 @@ elif market == '美國' and options == '內部資訊':
         stock_insider_roster_holders(symbol)
         
 elif market == '美國' and options == '機構買賣':
-    with st.expander("展開輸入參數"):
-        symbol = st.text_input('輸入美股代號').upper()
-        head = int(st.number_input('輸入查詢資料筆數'))
+    symbol = st.text_input('輸入美股代號').upper()
+    head = int(st.number_input('輸入查詢資料筆數'))
     if st.button('查詢'):
         stock_institutional_holders(symbol)
         stock_upgrades_downgrades(symbol, head)
