@@ -19,14 +19,14 @@ from geopy.geocoders import Nominatim
 
 #大盤指數
 @st.cache_data
-def plot_index(start_date='2014-01-01'):
+def plot_index(period):
     # Fetch historical data for S&P 500
-    nasdaq_data = yf.download('^IXIC', start=start_date)
-    nasdaq_100_data = yf.download('^NDX', start=start_date)
-    sp500_data = yf.download('^GSPC', start=start_date)
-    dji_data = yf.download('^DJI', start=start_date)
-    brk_data = yf.download('BRK-A', start=start_date)
-    Russell_2000_data = yf.download('^RUT', start=start_date)    
+    nasdaq_data = yf.download('^IXIC',period=period)
+    nasdaq_100_data = yf.download('^NDX',period=period)
+    sp500_data = yf.download('^GSPC',period=period)
+    dji_data = yf.download('^DJI', period=period)
+    brk_data = yf.download('BRK-A', period=period)
+    Russell_2000_data = yf.download('^RUT', period=period)    
     # Extract Close prices
     nasdaq_close = nasdaq_data['Close']
     nasdaq_100_close = nasdaq_100_data['Close']
@@ -41,7 +41,7 @@ def plot_index(start_date='2014-01-01'):
     dji_log_close = np.log(dji_close)
     brk_log_close = np.log(brk_close)
     Russell_2000_log_close = np.log(Russell_2000_close)  
-    st.subheader('美股大盤＆中小企業市場走勢(2014-01-01～今天)')
+    st.subheader(f'美股大盤＆中小企業{period}走勢')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
@@ -57,14 +57,14 @@ def plot_index(start_date='2014-01-01'):
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_pct(start_date='2014-01-01'):
+def plot_pct(period):
     # Fetch historical data for S&P 500
-    nasdaq_data = yf.download('^IXIC', start=start_date)
-    nasdaq_100_data = yf.download('^NDX', start=start_date)
-    sp500_data = yf.download('^GSPC', start=start_date)
-    dji_data = yf.download('^DJI', start=start_date)
-    brk_data = yf.download('BRK-A', start=start_date)
-    Russell_2000_data = yf.download('^RUT', start=start_date)    
+    nasdaq_data = yf.download('^IXIC',period=period)
+    nasdaq_100_data = yf.download('^NDX',period=period)
+    sp500_data = yf.download('^GSPC', period=period)
+    dji_data = yf.download('^DJI', period=period)
+    brk_data = yf.download('BRK-A', period=period)
+    Russell_2000_data = yf.download('^RUT', period=period)    
     # Extract Close prices
     nasdaq_close = nasdaq_data['Close']
     nasdaq_100_close = nasdaq_100_data['Close']
@@ -98,32 +98,36 @@ def plot_pct(start_date='2014-01-01'):
                          y=list(sorted_returns.values()),
                          marker_color=colors))
     # Update layout
-    st.subheader('美股大盤＆中小企業市場報酬率％(2014-01-01～今天)')
+    st.subheader(f'美股大盤＆中小企業市場{period}報酬率％')
     fig.update_layout(yaxis_title='Total Return (%)')
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_foreign(start_date='2014-01-01'):
+def plot_foreign(period):
     # Fetch historical data for S&P 500
-    sp500_data = yf.download('^GSPC', start=start_date)
-    sha_data = yf.download('000001.SS', start=start_date)
-    shz_data = yf.download('399001.SZ', start=start_date)
-    twse_data = yf.download('^TWII', start=start_date)   
+    sp500_data = yf.download('^GSPC', period=period)
+    nasdaq_data = yf.download('^IXIC', period=period)
+    sha_data = yf.download('000001.SS', period=period)
+    shz_data = yf.download('399001.SZ', period=period)
+    twse_data = yf.download('^TWII', period=period)   
     # Extract Close prices
     sp500_close = sp500_data['Close']
+    nasdaq_close = nasdaq_data['Close']
     sha_close = sha_data['Close']*0.1382
     shz_close = shz_data['Close']*0.1382
     twse_close = twse_data['Close']*0.0308  
     # Take the logarithm of the Close prices
     sp500_log_close = np.log(sp500_close)
+    nasdaq_log_close = np.log(nasdaq_close)
     sha_log_close = np.log(sha_close)
     shz_log_close = np.log(shz_close)
     twse_log_close = np.log(twse_close)  
-    st.subheader('美股大盤＆海外大盤走勢(2014-01-01～今天)')
+    st.subheader(f'美股大盤＆海外大盤{period}走勢')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
     fig.add_trace(go.Scatter(x=sp500_log_close.index, y=sp500_log_close.values, mode='lines', name='S&P 500'))
+    fig.add_trace(go.Scatter(x=nasdaq_log_close.index, y=nasdaq_log_close.values, mode='lines', name='NASDAQ'))
     fig.add_trace(go.Scatter(x=sha_log_close.index, y=sha_log_close.values, mode='lines', name='上證指數'))
     fig.add_trace(go.Scatter(x=shz_log_close.index, y=shz_log_close.values, mode='lines', name='深證指數'))
     fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
@@ -133,19 +137,22 @@ def plot_foreign(start_date='2014-01-01'):
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_pct_foreign(start_date='2014-01-01'):
+def plot_pct_foreign(period):
     # Fetch historical data for S&P 500
-    sp500_data = yf.download('^GSPC', start=start_date)
-    sha_data = yf.download('000001.SS', start=start_date)
-    shz_data = yf.download('399001.SZ', start=start_date)
-    twse_data = yf.download('^TWII', start=start_date)  
+    sp500_data = yf.download('^GSPC', period=period)
+    nasdaq_data = yf.download('^IXIC', period=period)
+    sha_data = yf.download('000001.SS', period=period)
+    shz_data = yf.download('399001.SZ', period=period)
+    twse_data = yf.download('^TWII', period=period)  
     # Extract Close prices
-    sp500_close = sp500_data['Close']  
+    sp500_close = sp500_data['Close'] 
+    nasdaq_close = nasdaq_data['Close'] 
     sha_close = sha_data['Close'] * 0.1382
     shz_close = shz_data['Close'] * 0.1382
     twse_close = twse_data['Close'] * 0.0308  
     # Calculate total returns
     sp500_total_return = ((sp500_close.iloc[-1] - sp500_close.iloc[0]) / sp500_close.iloc[0]) * 100
+    nasdaq_total_return = ((nasdaq_close.iloc[-1] - nasdaq_close.iloc[0]) / nasdaq_close.iloc[0]) * 100
     sha_total_return = ((sha_close.iloc[-1] - sha_close.iloc[0]) / sha_close.iloc[0]) * 100
     shz_total_return = ((shz_close.iloc[-1] - shz_close.iloc[0]) / shz_close.iloc[0]) * 100
     twse_total_return = ((twse_close.iloc[-1] - twse_close.iloc[0]) / twse_close.iloc[0]) * 100
@@ -154,6 +161,7 @@ def plot_pct_foreign(start_date='2014-01-01'):
     # Create a dictionary to store the results
     returns_dict = {
         'S&P 500': sp500_total_return,
+        'NASDAQ': nasdaq_total_return, 
         '上證指數': sha_total_return,
         '深證指數': shz_total_return,
         '加權指數': twse_total_return
@@ -166,7 +174,7 @@ def plot_pct_foreign(start_date='2014-01-01'):
                          y=list(sorted_returns.values()),
                          marker_color=colors))
     # Update layout
-    st.subheader('美股大盤＆海外大盤報酬率％(2014-01-01～今天)')
+    st.subheader(f'美股大盤＆海外大盤{period}報酬率％')
     fig.update_layout(yaxis_title='Total Return (%)')
     st.plotly_chart(fig, use_container_width=True)
 
@@ -567,28 +575,6 @@ def plot_volume_chart(stock_data,symbols):
     fig.layout.update(xaxis_rangeslider_visible=True)
     st.plotly_chart(fig, use_container_width=True)
 
-#機構持股
-@st.cache_data
-def stock_institutional_holders(symbol):
-    translation = {
-        'Date Reported': '日期',
-        'Holder': '機構名稱',
-        'pctHeld': '持股百分比',
-        'Shares': '股份',
-        'Value': '價值'
-    }
-    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    institutional_holders = ticker.institutional_holders
-    institutional_holders = institutional_holders.rename(columns=translation) 
-    # 將百分比轉換為百分數形式
-    institutional_holders['持股百分比'] = institutional_holders['持股百分比'].apply(lambda x: f"{x:.2f}%" if isinstance(x, float) else x)   
-    # 將數字轉換為千位數格式
-    institutional_holders['股份'] = institutional_holders['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
-    institutional_holders['價值'] = institutional_holders['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
-    st.subheader(f'持有{symbol}的機構')
-    st.write(institutional_holders)
-    return institutional_holders
-
 # 內部交易
 @st.cache_data
 def stock_insider_transactions(symbol, head):
@@ -657,6 +643,28 @@ def stock_insider_roster_holders(symbol):
     insider_roster_holders = st.write(insider_roster_holders)
     return insider_roster_holders
 
+#機構持股
+@st.cache_data
+def stock_institutional_holders(symbol):
+    translation = {
+        'Date Reported': '日期',
+        'Holder': '機構名稱',
+        'pctHeld': '持股百分比',
+        'Shares': '股份',
+        'Value': '價值'
+    }
+    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
+    institutional_holders = ticker.institutional_holders
+    institutional_holders = institutional_holders.rename(columns=translation) 
+    # 將百分比轉換為百分數形式
+    institutional_holders['持股百分比'] = institutional_holders['持股百分比'].apply(lambda x: f"{x:.2f}%" if isinstance(x, float) else x)   
+    # 將數字轉換為千位數格式
+    institutional_holders['股份'] = institutional_holders['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
+    institutional_holders['價值'] = institutional_holders['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
+    st.subheader(f'持有{symbol}的機構')
+    st.write(institutional_holders)
+    return institutional_holders
+
 #機構買賣
 @st.cache_data
 def stock_upgrades_downgrades(symbol, head):
@@ -714,11 +722,11 @@ def display_news_links(symbol):
 # 台股區
 
 @st.cache_data
-def plot_index_tw(start_date='2014-01-01'):
+def plot_index_tw(period):
     # Fetch historical data for S&P 500
-    twse_data = yf.download('^TWII', start=start_date)
-    tpex_data = yf.download('^TWOII', start=start_date)
-    tw50_data = yf.download('0050.TW', start=start_date)   
+    twse_data = yf.download('^TWII', period=period)
+    tpex_data = yf.download('^TWOII', period=period)
+    tw50_data = yf.download('0050.TW', period=period)   
     # Extract Close prices
     twse_close = twse_data['Close']
     tpex_close = tpex_data['Close']
@@ -727,7 +735,7 @@ def plot_index_tw(start_date='2014-01-01'):
     twse_log_close = np.log(twse_close)
     tpex_log_close = np.log(tpex_close)
     tw50_log_close = np.log(tw50_close)
-    st.subheader('上市＆櫃檯&0050走勢(2014-01-01～今天)')
+    st.subheader(f'上市＆櫃檯&0050{period}走勢')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
@@ -740,16 +748,18 @@ def plot_index_tw(start_date='2014-01-01'):
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_tw_asia(start_date='2014-01-01'):
+def plot_tw_asia(period):
     # Fetch historical data for S&P 500
-    sha_data = yf.download('000001.SS', start=start_date)
-    twse_data = yf.download('^TWII', start=start_date)
-    jp_data = yf.download('^N225', start=start_date)
-    hk_data = yf.download('^HSI', start=start_date)
-    kr_data = yf.download('^KS11', start=start_date)
-    sin_data = yf.download('^STI', start=start_date)
+    sha_data = yf.download('000001.SS',period=period )
+    shz_data = yf.download('399001.SZ', period=period)
+    twse_data = yf.download('^TWII', period=period)
+    jp_data = yf.download('^N225', period=period)
+    hk_data = yf.download('^HSI', period=period)
+    kr_data = yf.download('^KS11', period=period)
+    sin_data = yf.download('^STI', period=period)
     # Extract Close prices
     sha_close = sha_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
+    shz_close = shz_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
     twse_close = twse_data['Close']
     jp_close = jp_data['Close'] * 0.2084    # 將日經指數轉換為新台幣
     hk_close = hk_data['Close'] * 4.1549    # 將恒生指數轉換為新台幣
@@ -757,16 +767,18 @@ def plot_tw_asia(start_date='2014-01-01'):
     sin_close = sin_data['Close'] * 23.9665 # 將新加坡海峽時報指數轉換為新台幣
     # Take the logarithm of the Close prices
     sha_log_close = np.log(sha_close)
+    shz_log_close = np.log(shz_close)
     twse_log_close = np.log(twse_close)
     jp_log_close = np.log(jp_close)
     hk_log_close = np.log(hk_close)
     kr_log_close = np.log(kr_close)
     sin_log_close = np.log(sin_close) 
-    st.subheader('台股大盤＆亞洲大盤走勢(2014-01-01～今天)')
+    st.subheader(f'台股大盤＆亞洲大盤{period}走勢')
     # Create Plotly figure
     fig = go.Figure()   
     # Add trace for Log Close price
     fig.add_trace(go.Scatter(x=sha_log_close.index, y=sha_log_close.values, mode='lines', name='上證指數'))
+    fig.add_trace(go.Scatter(x=shz_log_close.index, y=shz_log_close.values, mode='lines', name='深證指數'))
     fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
     fig.add_trace(go.Scatter(x=jp_log_close.index, y=jp_log_close.values, mode='lines', name='日經指數'))
     fig.add_trace(go.Scatter(x=hk_log_close.index, y=hk_log_close.values, mode='lines', name='恒生指數'))
@@ -778,15 +790,15 @@ def plot_tw_asia(start_date='2014-01-01'):
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_pct_tw(start_date='2014-01-01'):
+def plot_pct_tw(period):
     # Fetch historical data for S&P 500
-    twse_data = yf.download('^TWII', start=start_date)
-    sha_data = yf.download('000001.SS', start=start_date)
-    shz_data = yf.download('399001.SZ', start=start_date)
-    jp_data = yf.download('^N225', start=start_date)
-    hk_data = yf.download('^HSI', start=start_date)
-    kr_data = yf.download('^KS11', start=start_date)
-    sin_data = yf.download('^STI', start=start_date) 
+    twse_data = yf.download('^TWII',period=period )
+    sha_data = yf.download('000001.SS', period=period)
+    shz_data = yf.download('399001.SZ', period=period)
+    jp_data = yf.download('^N225', period=period)
+    hk_data = yf.download('^HSI', period=period)
+    kr_data = yf.download('^KS11',period=period)
+    sin_data = yf.download('^STI', period=period) 
     # Extract Close prices
     sha_close = sha_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
     shz_close = shz_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
@@ -823,7 +835,7 @@ def plot_pct_tw(start_date='2014-01-01'):
                          y=list(sorted_returns.values()),
                          marker_color=colors))
     # Update layout
-    st.subheader('台股大盤＆亞洲大盤報酬率％(2014-01-01～今天)')
+    st.subheader(f'台股大盤＆亞洲大盤{period}報酬率％')
     fig.update_layout(yaxis_title='Total Return (%)')
     st.plotly_chart(fig, use_container_width=True)
 
@@ -1532,14 +1544,45 @@ st.sidebar.markdown('''
 3. 有些數據僅限美股，台股尚未支援  
 4. 建議使用電腦或平板查詢數據  
 ''')
-st.sidebar.text('大盤報酬率％計算方式')
-st.sidebar.text('(今天收盤價−2014-01-01收盤價)/2014-01-01收盤價*100%')
 
 if market == '美國' and options == '大盤指數':
-    plot_index(start_date='2014-01-01')
-    plot_pct(start_date='2014-01-01')
-    plot_foreign(start_date='2014-01-01')
-    plot_pct_foreign(start_date='2014-01-01')
+    period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
+    if period == '年初至今':
+        period = 'ytd'
+        plot_index(period)
+        plot_pct(period)
+        plot_foreign(period)
+        plot_pct_foreign(period)
+    elif period == '1年':
+        period = '1y'
+        plot_index(period)
+        plot_pct(period)
+        plot_foreign(period)
+        plot_pct_foreign(period)
+    elif period == '3年':
+        period = '3y'
+        plot_index(period)
+        plot_pct(period)
+        plot_foreign(period)
+        plot_pct_foreign(period)
+    elif period == '5年':
+        period = '5y'
+        plot_index(period)
+        plot_pct(period)
+        plot_foreign(period)
+        plot_pct_foreign(period)
+    elif period == '10年':
+        period = '10y'
+        plot_index(period)
+        plot_pct(period)
+        plot_foreign(period)
+        plot_pct_foreign(period)
+    elif period == '全部':
+        period = 'max'
+        plot_index(period)
+        plot_pct(period)
+        plot_foreign(period)
+        plot_pct_foreign(period)
     with st.expander("顯示成份股"):
         st.write('S&P500成份股')
         sp500_dsymbol()
@@ -1645,18 +1688,46 @@ elif market == '美國' and options == '近期相關消息' :
         display_news_links(symbol)
 
 elif market == '台灣' and options == '大盤指數':
-     plot_index_tw(start_date='2014-01-01')
-     plot_tw_asia(start_date='2014-01-01')
-     plot_pct_tw(start_date='2014-01-01')
-     with st.expander("顯示成份股"):
-         st.write('新加坡海峽時報指數成份股')
-         sti_symbol()
-         st.write('恒生指數成份股')
-         hsi_symbol()
-         st.write('日經指數成份股')
-         n225_symbol()
-         st.write('深證指數成份股')
-         shz_symbol()
+    period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
+    if period == '年初至今':
+        period = 'ytd'
+        plot_index_tw(period)
+        plot_tw_asia(period)
+        plot_pct_tw(period)
+    elif period == '1年':
+        period = '1y'
+        plot_index_tw(period)
+        plot_tw_asia(period)
+        plot_pct_tw(period)
+    elif period == '3年':
+        period = '3y'
+        plot_index_tw(period)
+        plot_tw_asia(period)
+        plot_pct_tw(period)
+    elif period == '5年':
+        period = '5y'
+        plot_index_tw(period)
+        plot_tw_asia(period)
+        plot_pct_tw(period)
+    elif period == '10年':
+        period = '10y'
+        plot_index_tw(period)
+        plot_tw_asia(period)
+        plot_pct_tw(period)
+    elif period == '全部':
+        period = 'max'
+        plot_index_tw(period)
+        plot_tw_asia(period)
+        plot_pct_tw(period)
+    with st.expander("顯示成份股"):
+        st.write('新加坡海峽時報指數成份股')
+        sti_symbol()
+        st.write('恒生指數成份股')
+        hsi_symbol()
+        st.write('日經指數成份股')
+        n225_symbol()
+        st.write('深證指數成份股')
+        shz_symbol()
 
 elif market == '台灣' and options == '今日熱門' :
     twse_20()
