@@ -10,6 +10,7 @@ import pytz
 import geopy
 import re
 import numpy as np
+from plotly.subplots import make_subplots
 from datetime import datetime
 from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
@@ -18,11 +19,12 @@ from geopy.geocoders import Nominatim
 
 #大盤指數
 @st.cache_data
-def plot_index(period):
+def plot_index(period,time):
+    time = time
     # Fetch historical data for S&P 500
-    nasdaq_data = yf.download('^IXIC',period=period)
-    nasdaq_100_data = yf.download('^NDX',period=period)
-    sp500_data = yf.download('^GSPC',period=period)
+    nasdaq_data = yf.download('^IXIC', period=period)
+    nasdaq_100_data = yf.download('^NDX', period=period)
+    sp500_data = yf.download('^GSPC', period=period)
     dji_data = yf.download('^DJI', period=period)
     brk_data = yf.download('BRK-A', period=period)
     Russell_2000_data = yf.download('^RUT', period=period)    
@@ -33,30 +35,25 @@ def plot_index(period):
     dji_close = dji_data['Close']
     brk_close = brk_data['Close']
     Russell_2000_close = Russell_2000_data['Close']   
-    # Take the logarithm of the Close prices
-    nasdaq_log_close = np.log(nasdaq_close)
-    nasdaq_100_log_close = np.log(nasdaq_100_close)
-    sp500_log_close = np.log(sp500_close)
-    dji_log_close = np.log(dji_close)
-    brk_log_close = np.log(brk_close)
-    Russell_2000_log_close = np.log(Russell_2000_close)  
-    st.subheader(f'美股大盤＆中小企業{period}走勢')
-    # Create Plotly figure
-    fig = go.Figure()   
-    # Add trace for Log Close price
-    fig.add_trace(go.Scatter(x=nasdaq_log_close.index, y=nasdaq_log_close.values, mode='lines', name='NASDAQ'))
-    fig.add_trace(go.Scatter(x=nasdaq_100_log_close.index, y=nasdaq_100_log_close.values, mode='lines', name='NASDAQ-100'))
-    fig.add_trace(go.Scatter(x=sp500_log_close.index, y=sp500_log_close.values, mode='lines', name='S&P 500'))
-    fig.add_trace(go.Scatter(x=dji_log_close.index, y=dji_log_close.values, mode='lines', name='DJIA'))
-    fig.add_trace(go.Scatter(x=brk_log_close.index, y=brk_log_close.values, mode='lines', name='Berkshire Hathaway Inc.'))
-    fig.add_trace(go.Scatter(x=Russell_2000_log_close.index, y=Russell_2000_log_close.values, mode='lines', name='Russell-2000'))
+    st.subheader(f'美股大盤＆中小企業{time}走勢')
+    # Create Plotly subplot figure
+    fig = make_subplots(rows=3, cols=2, subplot_titles=("NASDAQ", "NASDAQ-100", "S&P 500", "DJIA", "Berkshire Hathaway Inc.", "Russell-2000"))
+    # Add traces for Log Close price
+    fig.add_trace(go.Scatter(x=nasdaq_close.index, y=nasdaq_close.values, mode='lines', name='NASDAQ'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=nasdaq_100_close.index, y=nasdaq_100_close.values, mode='lines', name='NASDAQ-100'), row=1, col=2)
+    fig.add_trace(go.Scatter(x=sp500_close.index, y=sp500_close.values, mode='lines', name='S&P 500'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=dji_close.index, y=dji_close.values, mode='lines', name='DJIA'), row=2, col=2)
+    fig.add_trace(go.Scatter(x=brk_close.index, y=brk_close.values, mode='lines', name='Berkshire Hathaway Inc.'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=Russell_2000_close.index, y=Russell_2000_close.values, mode='lines', name='Russell-2000'), row=3, col=2)
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
-    fig.layout.update(xaxis_rangeslider_visible=True)
+    fig.update_layout(height=800, width=1000,showlegend=False)
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_pct(period):
+def plot_pct(period,time):
+    time = time
     # Fetch historical data for S&P 500
     nasdaq_data = yf.download('^IXIC',period=period)
     nasdaq_100_data = yf.download('^NDX',period=period)
@@ -97,64 +94,67 @@ def plot_pct(period):
                          y=list(sorted_returns.values()),
                          marker_color=colors))
     # Update layout
-    st.subheader(f'美股大盤＆中小企業市場{period}報酬率％')
+    st.subheader(f'美股大盤＆中小企業市場{time}報酬率％')
     fig.update_layout(yaxis_title='Total Return (%)')
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_foreign(period):
+def plot_foreign(period,time):
+    time = time
     # Fetch historical data for S&P 500
     sp500_data = yf.download('^GSPC', period=period)
     nasdaq_data = yf.download('^IXIC', period=period)
     sha_data = yf.download('000001.SS', period=period)
     shz_data = yf.download('399001.SZ', period=period)
-    twse_data = yf.download('^TWII', period=period)   
+    twse_data = yf.download('^TWII', period=period)
+    jp_data = yf.download('^N225', period=period)   
     # Extract Close prices
     sp500_close = sp500_data['Close']
     nasdaq_close = nasdaq_data['Close']
     sha_close = sha_data['Close']*0.1382
     shz_close = shz_data['Close']*0.1382
-    twse_close = twse_data['Close']*0.0308  
-    # Take the logarithm of the Close prices
-    sp500_log_close = np.log(sp500_close)
-    nasdaq_log_close = np.log(nasdaq_close)
-    sha_log_close = np.log(sha_close)
-    shz_log_close = np.log(shz_close)
-    twse_log_close = np.log(twse_close)  
-    st.subheader(f'美股大盤＆海外大盤{period}走勢')
-    # Create Plotly figure
-    fig = go.Figure()   
-    # Add trace for Log Close price
-    fig.add_trace(go.Scatter(x=sp500_log_close.index, y=sp500_log_close.values, mode='lines', name='S&P 500'))
-    fig.add_trace(go.Scatter(x=nasdaq_log_close.index, y=nasdaq_log_close.values, mode='lines', name='NASDAQ'))
-    fig.add_trace(go.Scatter(x=sha_log_close.index, y=sha_log_close.values, mode='lines', name='上證指數'))
-    fig.add_trace(go.Scatter(x=shz_log_close.index, y=shz_log_close.values, mode='lines', name='深證指數'))
-    fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
+    twse_close = twse_data['Close']*0.0308 
+    jp_close = jp_data['Close']*0.0064  
+    st.subheader(f'美股大盤＆海外大盤{time}走勢')
+    # Create Plotly subplot figure
+    fig = make_subplots(rows=3, cols=2, subplot_titles=("S&P 500", "NASDAQ", "上證指數", "深證指數", "加權指數","日經指數"))
+    # Add traces for Log Close price
+    fig.add_trace(go.Scatter(x=sp500_close.index, y=sp500_close.values, mode='lines', name='S&P 500'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=nasdaq_close.index, y=nasdaq_close.values, mode='lines', name='NASDAQ'), row=1, col=2)
+    fig.add_trace(go.Scatter(x=sha_close.index, y=sha_close.values, mode='lines', name='上證指數'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=shz_close.index, y=shz_close.values, mode='lines', name='深證指數'), row=2, col=2)
+    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=jp_close.index, y=jp_close.values, mode='lines', name='日經指數'), row=3, col=2)
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
-    fig.layout.update(xaxis_rangeslider_visible=True)
+    fig.update_layout(height=800, width=1000,showlegend=False)
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_pct_foreign(period):
+def plot_pct_foreign(period,time):
+    time = time
     # Fetch historical data for S&P 500
     sp500_data = yf.download('^GSPC', period=period)
     nasdaq_data = yf.download('^IXIC', period=period)
     sha_data = yf.download('000001.SS', period=period)
     shz_data = yf.download('399001.SZ', period=period)
-    twse_data = yf.download('^TWII', period=period)  
+    twse_data = yf.download('^TWII', period=period) 
+    jp_data = yf.download('^N225', period=period)  
     # Extract Close prices
     sp500_close = sp500_data['Close'] 
     nasdaq_close = nasdaq_data['Close'] 
     sha_close = sha_data['Close'] * 0.1382
     shz_close = shz_data['Close'] * 0.1382
-    twse_close = twse_data['Close'] * 0.0308  
+    twse_close = twse_data['Close'] * 0.0308
+    jp_close = jp_data['Close']*0.0064
     # Calculate total returns
     sp500_total_return = ((sp500_close.iloc[-1] - sp500_close.iloc[0]) / sp500_close.iloc[0]) * 100
     nasdaq_total_return = ((nasdaq_close.iloc[-1] - nasdaq_close.iloc[0]) / nasdaq_close.iloc[0]) * 100
     sha_total_return = ((sha_close.iloc[-1] - sha_close.iloc[0]) / sha_close.iloc[0]) * 100
     shz_total_return = ((shz_close.iloc[-1] - shz_close.iloc[0]) / shz_close.iloc[0]) * 100
     twse_total_return = ((twse_close.iloc[-1] - twse_close.iloc[0]) / twse_close.iloc[0]) * 100
+    jp_total_return = ((jp_close.iloc[-1] - jp_close.iloc[0]) / jp_close.iloc[0]) * 100
     # Create Plotly figure
     fig = go.Figure()   
     # Create a dictionary to store the results
@@ -163,7 +163,8 @@ def plot_pct_foreign(period):
         'NASDAQ': nasdaq_total_return, 
         '上證指數': sha_total_return,
         '深證指數': shz_total_return,
-        '加權指數': twse_total_return
+        '加權指數': twse_total_return,
+        '日經指數': jp_total_return
     }
     colors = px.colors.qualitative.Plotly
     # Sort the dictionary by values in descending order
@@ -173,7 +174,7 @@ def plot_pct_foreign(period):
                          y=list(sorted_returns.values()),
                          marker_color=colors))
     # Update layout
-    st.subheader(f'美股大盤＆海外大盤{period}報酬率％')
+    st.subheader(f'美股大盤＆海外大盤{time}報酬率％')
     fig.update_layout(yaxis_title='Total Return (%)')
     st.plotly_chart(fig, use_container_width=True)
 
@@ -697,8 +698,9 @@ def display_news_links(symbol):
 # 台股區
 
 @st.cache_data
-def plot_index_tw(period):
+def plot_index_tw(period,time):
     # Fetch historical data for S&P 500
+    time = time
     twse_data = yf.download('^TWII', period=period)
     tpex_data = yf.download('^TWOII', period=period)
     tw50_data = yf.download('0050.TW', period=period)   
@@ -707,24 +709,23 @@ def plot_index_tw(period):
     tpex_close = tpex_data['Close']
     tw50_close = tw50_data['Close']
     # Take the logarithm of the Close prices
-    twse_log_close = np.log(twse_close)
-    tpex_log_close = np.log(tpex_close)
-    tw50_log_close = np.log(tw50_close)
-    st.subheader(f'上市＆櫃檯&0050{period}走勢')
+    st.subheader(f'上市＆櫃檯&0050{time}走勢')
     # Create Plotly figure
-    fig = go.Figure()   
     # Add trace for Log Close price
-    fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
-    fig.add_trace(go.Scatter(x=tpex_log_close.index, y=tpex_log_close.values, mode='lines', name='櫃檯指數'))
-    fig.add_trace(go.Scatter(x=tw50_log_close.index, y=tw50_log_close.values, mode='lines', name='0050'))
+    fig = make_subplots(rows=3, cols=1, subplot_titles=('加權指數','櫃檯指數','0050'))
+    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'),row=1,col=1)
+    fig.add_trace(go.Scatter(x=tpex_close.index, y=tpex_close.values, mode='lines', name='櫃檯指數'),row=2,col=1)
+    fig.add_trace(go.Scatter(x=tw50_close.index, y=tw50_close.values, mode='lines', name='0050'),row=3,col=1)
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
-    fig.layout.update(xaxis_rangeslider_visible=True)
+    fig.update_layout(height=800, width=1000,showlegend=False)
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_tw_asia(period):
+def plot_tw_asia(period,time):
     # Fetch historical data for S&P 500
+    time = time
     sha_data = yf.download('000001.SS',period=period )
     shz_data = yf.download('399001.SZ', period=period)
     twse_data = yf.download('^TWII', period=period)
@@ -732,6 +733,7 @@ def plot_tw_asia(period):
     hk_data = yf.download('^HSI', period=period)
     kr_data = yf.download('^KS11', period=period)
     sin_data = yf.download('^STI', period=period)
+    th_data = yf.download('^SET.BK', period=period)
     # Extract Close prices
     sha_close = sha_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
     shz_close = shz_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
@@ -740,40 +742,38 @@ def plot_tw_asia(period):
     hk_close = hk_data['Close'] * 4.1549    # 將恒生指數轉換為新台幣
     kr_close = kr_data['Close'] * 0.0237    # 將韓國綜合股價指數轉換為新台幣
     sin_close = sin_data['Close'] * 23.9665 # 將新加坡海峽時報指數轉換為新台幣
-    # Take the logarithm of the Close prices
-    sha_log_close = np.log(sha_close)
-    shz_log_close = np.log(shz_close)
-    twse_log_close = np.log(twse_close)
-    jp_log_close = np.log(jp_close)
-    hk_log_close = np.log(hk_close)
-    kr_log_close = np.log(kr_close)
-    sin_log_close = np.log(sin_close) 
-    st.subheader(f'台股大盤＆亞洲大盤{period}走勢')
+    th_close = th_data['Close'] * 0.8842
+    # Take the logarithm of the Close prices 
+    st.subheader(f'台股大盤＆亞洲大盤{time}走勢')
     # Create Plotly figure
-    fig = go.Figure()   
     # Add trace for Log Close price
-    fig.add_trace(go.Scatter(x=sha_log_close.index, y=sha_log_close.values, mode='lines', name='上證指數'))
-    fig.add_trace(go.Scatter(x=shz_log_close.index, y=shz_log_close.values, mode='lines', name='深證指數'))
-    fig.add_trace(go.Scatter(x=twse_log_close.index, y=twse_log_close.values, mode='lines', name='加權指數'))
-    fig.add_trace(go.Scatter(x=jp_log_close.index, y=jp_log_close.values, mode='lines', name='日經指數'))
-    fig.add_trace(go.Scatter(x=hk_log_close.index, y=hk_log_close.values, mode='lines', name='恒生指數'))
-    fig.add_trace(go.Scatter(x=kr_log_close.index, y=kr_log_close.values, mode='lines', name='韓國綜合股價指數'))
-    fig.add_trace(go.Scatter(x=sin_log_close.index, y=sin_log_close.values, mode='lines', name='新加坡海峽時報指數'))
+    fig = make_subplots(rows=4, cols=2, subplot_titles=("上證指數", "深證指數", "加權指數", "日經指數", "恒生指數","韓國綜合股價指數","新加坡海峽時報指數","泰國SET指數"))
+    fig.add_trace(go.Scatter(x=sha_close.index, y=sha_close.values, mode='lines', name='上證指數'),row=1,col=1)
+    fig.add_trace(go.Scatter(x=shz_close.index, y=shz_close.values, mode='lines', name='深證指數'),row=1,col=2)
+    fig.add_trace(go.Scatter(x=twse_close.index, y=twse_close.values, mode='lines', name='加權指數'),row=2,col=1)
+    fig.add_trace(go.Scatter(x=jp_close.index, y=jp_close.values, mode='lines', name='日經指數'),row=2,col=2)
+    fig.add_trace(go.Scatter(x=hk_close.index, y=hk_close.values, mode='lines', name='恒生指數'),row=3,col=1)
+    fig.add_trace(go.Scatter(x=kr_close.index, y=kr_close.values, mode='lines', name='韓國綜合股價指數'),row=3,col=2)
+    fig.add_trace(go.Scatter(x=sin_close.index, y=sin_close.values, mode='lines', name='新加坡海峽時報指數'),row=4,col=1)
+    fig.add_trace(go.Scatter(x=th_close.index, y=th_close.values, mode='lines', name='泰國SET指數'),row=4,col=2)
     # Update layout
-    fig.update_layout(xaxis_title='Date', yaxis_title='Log Close Price')
-    fig.layout.update(xaxis_rangeslider_visible=True)
+    fig.update_layout(height=800, width=1000,showlegend=False)
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
-def plot_pct_tw(period):
+def plot_pct_tw(period,time):
     # Fetch historical data for S&P 500
+    time = time
     twse_data = yf.download('^TWII',period=period )
     sha_data = yf.download('000001.SS', period=period)
     shz_data = yf.download('399001.SZ', period=period)
     jp_data = yf.download('^N225', period=period)
     hk_data = yf.download('^HSI', period=period)
     kr_data = yf.download('^KS11',period=period)
-    sin_data = yf.download('^STI', period=period) 
+    sin_data = yf.download('^STI', period=period)
+    th_data = yf.download('^SET.BK', period=period)
     # Extract Close prices
     sha_close = sha_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
     shz_close = shz_data['Close'] * 4.4927  # 將上證指數轉換為新台幣
@@ -782,6 +782,7 @@ def plot_pct_tw(period):
     hk_close = hk_data['Close'] * 4.1549    # 將恒生指數轉換為新台幣
     kr_close = kr_data['Close'] * 0.0237    # 將韓國綜合股價指數轉換為新台幣
     sin_close = sin_data['Close'] * 23.9665 # 將新加坡海峽時報指數轉換為新台幣
+    th_close = th_data['Close'] * 0.8842
     # Calculate total returns
     twse_total_return = ((twse_close.iloc[-1] - twse_close.iloc[0]) / twse_close.iloc[0]) * 100
     shz_total_return = ((shz_close.iloc[-1] - shz_close.iloc[0]) / shz_close.iloc[0]) * 100
@@ -790,6 +791,7 @@ def plot_pct_tw(period):
     hk_total_return = ((hk_close.iloc[-1] - hk_close.iloc[0]) / hk_close.iloc[0]) * 100
     kr_total_return = ((kr_close.iloc[-1] - kr_close.iloc[0]) / kr_close.iloc[0]) * 100
     sin_total_return = ((sin_close.iloc[-1] - sin_close.iloc[0]) / sin_close.iloc[0]) * 100
+    th_total_return = ((th_close.iloc[-1] - th_close.iloc[0]) / th_close.iloc[0]) * 100
     # Create Plotly figure
     fig = go.Figure()   
     # Create a dictionary to store the results
@@ -801,6 +803,7 @@ def plot_pct_tw(period):
         '新加坡海峽時報指數': sin_total_return,
         '日經指數': jp_total_return,
         '加權指數': twse_total_return,
+        '泰國SET指數':th_total_return
     }
     # Sort the dictionary by values in descending order
     sorted_returns = dict(sorted(returns_dict.items(), key=lambda item: item[1], reverse=True))
@@ -810,7 +813,7 @@ def plot_pct_tw(period):
                          y=list(sorted_returns.values()),
                          marker_color=colors))
     # Update layout
-    st.subheader(f'台股大盤＆亞洲大盤{period}報酬率％')
+    st.subheader(f'台股大盤＆亞洲大盤{time}報酬率％')
     fig.update_layout(yaxis_title='Total Return (%)')
     st.plotly_chart(fig, use_container_width=True)
 
@@ -1528,40 +1531,46 @@ if market == '美國' and options == '大盤指數':
     period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
     if period == '年初至今':
         period = 'ytd'
-        plot_index(period)
-        plot_pct(period)
-        plot_foreign(period)
-        plot_pct_foreign(period)
+        time = '年初至今'
+        plot_index(period,time)
+        plot_pct(period,time)
+        plot_foreign(period,time)
+        plot_pct_foreign(period,time)
     elif period == '1年':
         period = '1y'
-        plot_index(period)
-        plot_pct(period)
-        plot_foreign(period)
-        plot_pct_foreign(period)
+        time = '1年'
+        plot_index(period,time)
+        plot_pct(period,time)
+        plot_foreign(period,time)
+        plot_pct_foreign(period,time)
     elif period == '3年':
         period = '3y'
-        plot_index(period)
-        plot_pct(period)
-        plot_foreign(period)
-        plot_pct_foreign(period)
+        time = '3年'
+        plot_index(period,time)
+        plot_pct(period,time)
+        plot_foreign(period,time)
+        plot_pct_foreign(period,time)
     elif period == '5年':
         period = '5y'
-        plot_index(period)
-        plot_pct(period)
-        plot_foreign(period)
-        plot_pct_foreign(period)
+        time = '5年'
+        plot_index(period,time)
+        plot_pct(period,time)
+        plot_foreign(period,time)
+        plot_pct_foreign(period,time)
     elif period == '10年':
         period = '10y'
-        plot_index(period)
-        plot_pct(period)
-        plot_foreign(period)
-        plot_pct_foreign(period)
+        time = '10年'
+        plot_index(period,time)
+        plot_pct(period,time)
+        plot_foreign(period,time)
+        plot_pct_foreign(period,time)
     elif period == '全部':
         period = 'max'
-        plot_index(period)
-        plot_pct(period)
-        plot_foreign(period)
-        plot_pct_foreign(period)
+        time = '全部'
+        plot_index(period,time)
+        plot_pct(period,time)
+        plot_foreign(period,time)
+        plot_pct_foreign(period,time)
     with st.expander("顯示成份股"):
         st.write('S&P500成份股')
         sp500_dsymbol()
@@ -1667,35 +1676,41 @@ elif market == '美國' and options == '近期相關消息' :
 elif market == '台灣' and options == '大盤指數':
     period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
     if period == '年初至今':
+        time = '年初至今'
         period = 'ytd'
-        plot_index_tw(period)
-        plot_tw_asia(period)
-        plot_pct_tw(period)
+        plot_index_tw(period,time)
+        plot_tw_asia(period,time)
+        plot_pct_tw(period,time)
     elif period == '1年':
+        time = '1年'
         period = '1y'
-        plot_index_tw(period)
-        plot_tw_asia(period)
-        plot_pct_tw(period)
+        plot_index_tw(period,time)
+        plot_tw_asia(period,time)
+        plot_pct_tw(period,time)
     elif period == '3年':
+        time = '3年'
         period = '3y'
-        plot_index_tw(period)
-        plot_tw_asia(period)
-        plot_pct_tw(period)
+        plot_index_tw(period,time)
+        plot_tw_asia(period,time)
+        plot_pct_tw(period,time)
     elif period == '5年':
+        time = '5年'
         period = '5y'
-        plot_index_tw(period)
-        plot_tw_asia(period)
-        plot_pct_tw(period)
+        plot_index_tw(period,time)
+        plot_tw_asia(period,time)
+        plot_pct_tw(period,time)
     elif period == '10年':
+        time = '10年'
         period = '10y'
-        plot_index_tw(period)
-        plot_tw_asia(period)
-        plot_pct_tw(period)
+        plot_index_tw(period,time)
+        plot_tw_asia(period,time)
+        plot_pct_tw(period,time)
     elif period == '全部':
+        time = '全部'
         period = 'max'
-        plot_index_tw(period)
-        plot_tw_asia(period)
-        plot_pct_tw(period)
+        plot_index_tw(period,time)
+        plot_tw_asia(period,time)
+        plot_pct_tw(period,time)
     with st.expander("顯示成份股"):
         st.write('新加坡海峽時報指數成份股')
         sti_symbol()
