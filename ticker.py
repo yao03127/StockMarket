@@ -234,109 +234,6 @@ def dji_symbol():
     dji = pd.read_html(url.content, encoding='utf-8')
     st.write(dji[2])
 
-# 定义将字符串中的百分号去除并转换为小数的函数
-def clean_and_round(value):
-    if isinstance(value, str):
-        return float(value.strip('%')) / 100
-    return value
-
-# 定義將交易量字串轉換為數字的函數
-def convert_volume_string_to_numeric(volume_str):
-    if 'M' in volume_str:
-        return float(volume_str.replace('M', '')) * 1000000
-    elif 'B' in volume_str:
-        return float(volume_str.replace('B', '')) * 1000000000
-    else:
-        return float(volume_str)
-
-#今日熱門
-@st.cache_data
-def hot_stock():
-    try:
-        hot_stock_res = res.get("https://finance.yahoo.com/most-active/")
-        f = io.StringIO(hot_stock_res.text)
-        hot_stock_df_list = pd.read_html(f)
-        hot_stock_df = hot_stock_df_list[0]
-        hot_stock_df = hot_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])
-        st.subheader("今日交易量前25名")
-        # 提取 Volume 列的值並轉換為數字
-        hot_stock_df['Numeric Volume'] = hot_stock_df['Volume'].apply(convert_volume_string_to_numeric)
-        symbols = hot_stock_df['Symbol']
-        numeric_volumes = hot_stock_df['Numeric Volume']
-        # 根据 Volume 列的值降序排列数据
-        hot_stock_df_sorted = hot_stock_df.sort_values(by='Numeric Volume', ascending=False)
-        symbols_sorted = hot_stock_df_sorted['Symbol']
-        numeric_volumes_sorted = hot_stock_df_sorted['Numeric Volume']      
-        # 定义所有长条的统一颜色为蓝色
-        color = 'rgba(0,0,255,0.6)'  # 蓝色
-        # 绘制长条图
-        fig = go.Figure(data=[go.Bar(x=symbols_sorted, y=numeric_volumes_sorted, marker=dict(color=color))])
-        fig.update_layout(xaxis_title='Symbol', yaxis_title='Volume')
-        st.plotly_chart(fig)
-        with st.expander("展開數據"):
-            st.write(hot_stock_df_sorted)
-        return hot_stock_df_sorted
-    except Exception as e:
-        st.error(f"獲取發生錯誤：{str(e)}")
-        return None
-      
-#今日上漲
-@st.cache_data
-def gainers_stock():
-    try:
-        gainers_stock_res = res.get("https://finance.yahoo.com/gainers/")
-        f = io.StringIO(gainers_stock_res.text)
-        gainers_stock_df_list = pd.read_html(f)
-        gainers_stock_df = gainers_stock_df_list[0]
-        gainers_stock_df = gainers_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])       
-        # 清理和保留小数点
-        gainers_stock_df['% Change'] = gainers_stock_df['% Change'].map(clean_and_round)
-        # 去除无法转换为数字的行
-        gainers_stock_df = gainers_stock_df.dropna(subset=['% Change'])
-        # 根据 % Change 列的值降序排列数据
-        gainers_stock_df_sorted = gainers_stock_df.sort_values(by='% Change', ascending=False)
-        st.subheader("今日上漲前25名")  
-        # 定义所有长条的统一颜色为绿色
-        color = 'rgba(0,255,0,0.6)'  # 绿色
-        # 绘制长条图
-        fig = go.Figure(data=[go.Bar(x=gainers_stock_df_sorted['Symbol'], y=gainers_stock_df_sorted['% Change'], marker=dict(color=color))])
-        fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change')
-        st.plotly_chart(fig)
-        with st.expander("展開數據"):
-            st.write(gainers_stock_df_sorted)
-        return gainers_stock_df_list
-    except Exception as e:
-        print(f"獲取發生錯誤：{str(e)}")
-        return None
-#今日下跌
-@st.cache_data
-def loser_stock():
-    try:
-        loser_stock_res = res.get("https://finance.yahoo.com/losers/")
-        f = io.StringIO(loser_stock_res.text)
-        loser_stock_df_list = pd.read_html(f)
-        loser_stock_df = loser_stock_df_list[0]
-        loser_stock_df = loser_stock_df.drop(columns=['PE Ratio (TTM)', '52 Week Range'])       
-        # 清理和保留小数点
-        loser_stock_df['% Change'] = loser_stock_df['% Change'].map(clean_and_round)
-        # 去除无法转换为数字的行
-        loser_stock_df = loser_stock_df.dropna(subset=['% Change'])
-        # 根据 % Change 列的值降序排列数据
-        loser_stock_df_sorted = loser_stock_df.sort_values(by='% Change', ascending=True)
-        st.subheader("今日下跌前25名")  
-        # 定义所有长条的统一颜色为绿色
-        color = 'rgba(255,0,0,0.6)'  # 深红色
-        # 绘制长条图
-        fig = go.Figure(data=[go.Bar(x=loser_stock_df_sorted['Symbol'], y=loser_stock_df_sorted['% Change'], marker=dict(color=color))])
-        fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change')
-        st.plotly_chart(fig)
-        with st.expander("展開數據"):
-            st.write(loser_stock_df_sorted)
-        return loser_stock_df_list
-    except Exception as e:
-        print(f"獲取發生錯誤：{str(e)}")
-        return None
-
 # 獲取公司基本資訊
 @st.cache_data
 def company_info(symbol):
@@ -585,12 +482,11 @@ def stock_insider_transactions(symbol, head):
         'Insider':'內部人員',
         'Position':'職位',
         'Start Date':'開始日期',
-        'Ownership':'持有權'
         }
     try:
         ticker = yf.Ticker(symbol)
         insider_transactions = ticker.insider_transactions
-        insider_transactions = insider_transactions.drop(columns=['URL','Transaction'])
+        insider_transactions = insider_transactions.drop(columns=['URL','Transaction','Ownership'])
         insider_transactions = insider_transactions.rename(columns=translation)
         if insider_transactions is not None and not insider_transactions.empty:
             if head > 0:
@@ -607,17 +503,6 @@ def stock_insider_transactions(symbol, head):
             st.error(f"無法獲取{symbol}內部交易數據或數據為空")
     except Exception as e:
         st.error(f"獲取{symbol}內部交易數據時出錯：{str(e)}")
-        
-#內部持股
-@st.cache_data
-def stock_insider_roster_holders(symbol):
-    symbol = symbol
-    symbol = yf.Ticker(symbol)
-    insider_roster_holders = symbol.insider_roster_holders
-    insider_roster_holders = insider_roster_holders.drop(columns='URL')
-    st.subheader('內部持股')
-    insider_roster_holders = st.write(insider_roster_holders)
-    return insider_roster_holders
 
 #機構持股
 @st.cache_data
@@ -913,57 +798,6 @@ def shz_symbol():
         # 顯示數據表
     else:
         st.error('無法獲取數據')
-
-#成交量前二十名證券
-@st.cache_data
-def twse_20():
-    # Get data from the API
-    response = res.get('https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX20')
-    # Check if the request was successful
-    if response.status_code == 200:
-        data = response.json()      
-        # Create DataFrame from the retrieved data
-        df = pd.DataFrame(data) 
-        # Convert TradeVolume column to numeric for sorting
-        df['TradeVolume'] = pd.to_numeric(df['TradeVolume'])
-        # Sort DataFrame by TradeVolume in descending order
-        df_sorted = df.sort_values(by='TradeVolume', ascending=False)
-        # Plot the bar chart
-        fig = go.Figure(data=[go.Bar(x=df_sorted['Name'], y=df_sorted['TradeVolume'], marker_color='rgba(0,0,255,0.6)')])
-        fig.update_layout(xaxis_title='Name', yaxis_title='TradeVolume')
-        # Display the bar chart
-        st.subheader('今日上市交易量前20名')
-        st.plotly_chart(fig)
-        # Display the data table
-        with st.expander("展開數據"):
-            st.write(df_sorted)
-    else:
-        st.error('Failed to fetch data from the API')
-
-@st.cache_data
-def tpex_20():
-    # Get data from the API
-    response = res.get('https://www.tpex.org.tw/openapi/v1/tpex_volume_rank')
-    # Check if the request was successful
-    if response.status_code == 200:
-        data = response.json()      
-        # Create DataFrame from the retrieved data
-        df = pd.DataFrame(data) 
-        # Convert TradeVolume column to numeric for sorting
-        df['TradingVolume'] = pd.to_numeric(df['TradingVolume'])
-        # Sort DataFrame by TradeVolume in descending order
-        df_sorted = df.sort_values(by='TradingVolume', ascending=False).head(20)
-        # Plot the bar chart
-        fig = go.Figure(data=[go.Bar(x=df_sorted['CompanyName'], y=df_sorted['TradingVolume'], marker_color='rgba(255,0,0,0.6)')])
-        fig.update_layout(xaxis_title='CompanyName', yaxis_title='TradingVolume')
-        # Display the bar chart
-        st.subheader('今日櫃檯交易量前20名')
-        st.plotly_chart(fig)
-        # Display the data table
-        with st.expander("展開數據"):
-            st.write(df_sorted)
-    else:
-        st.error('Failed to fetch data from the API')
 
 #公司基本資訊
 @st.cache_data
@@ -1516,7 +1350,7 @@ st.header(' ',divider="rainbow")
 
 st.sidebar.title('Menu')
 market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
-options = st.sidebar.selectbox('選擇功能', ['大盤指數','今日熱門','公司基本資訊','公司財報查詢','交易數據','內部資訊','機構買賣','近期相關消息'])
+options = st.sidebar.selectbox('選擇功能', ['大盤指數','公司基本資訊','公司財報查詢','交易數據','內部資訊','機構買賣','近期相關消息'])
 st.sidebar.markdown('''
 免責聲明：        
 1. K 線圖觀看角度      
@@ -1579,11 +1413,6 @@ if market == '美國' and options == '大盤指數':
         st.write('道瓊工業成份股')
         dji_symbol()
     st.markdown("[美股指數名詞解釋](https://www.oanda.com/bvi-ft/lab-education/indices/us-4index/)")
-
-elif market == '美國' and options == '今日熱門':
-    hot_stock()
-    gainers_stock()
-    loser_stock()
 
 elif market == '美國' and options == '公司基本資訊':
     symbol = st.text_input('輸入美股代號').upper()
@@ -1657,7 +1486,6 @@ elif market == '美國' and options == '內部資訊':
     head = int(st.number_input('輸入欲查詢資料筆數'))
     if st.button('查詢'):
         stock_insider_transactions(symbol,head)
-        stock_insider_roster_holders(symbol)
         
 elif market == '美國' and options == '機構買賣':
     symbol = st.text_input('輸入美股代號').upper()
@@ -1720,10 +1548,6 @@ elif market == '台灣' and options == '大盤指數':
         n225_symbol()
         st.write('深證指數成份股')
         shz_symbol()
-
-elif market == '台灣' and options == '今日熱門' :
-    twse_20()
-    tpex_20()
 
 elif market == '台灣' and options == '公司基本資訊' :
     select = st.selectbox('選擇市場',['上市','櫃檯'])
