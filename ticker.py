@@ -47,8 +47,8 @@ def plot_index(period,time):
     fig.add_trace(go.Scatter(x=Russell_2000_close.index, y=Russell_2000_close.values, mode='lines', name='Russell-2000'), row=3, col=2)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
-    fig.update_xaxes(title_text="Date", row=1, col=1)
-    fig.update_yaxes(title_text="Close Price", row=1, col=1)
+    #fig.update_xaxes(title_text="Date", row=1, col=1)
+    #fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
