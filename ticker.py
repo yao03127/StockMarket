@@ -284,7 +284,7 @@ def hot_stock():
 @st.cache_data
 def gainers_stock():
     try:
-        gainers_stock_res = res.get("https://finance.yahoo.com/gainers")
+        gainers_stock_res = res.get("https://finance.yahoo.com/gainers/")
         f = io.StringIO(gainers_stock_res.text)
         gainers_stock_df_list = pd.read_html(f)
         gainers_stock_df = gainers_stock_df_list[0]
@@ -312,7 +312,7 @@ def gainers_stock():
 @st.cache_data
 def loser_stock():
     try:
-        loser_stock_res = res.get("https://finance.yahoo.com/losers")
+        loser_stock_res = res.get("https://finance.yahoo.com/losers/")
         f = io.StringIO(loser_stock_res.text)
         loser_stock_df_list = pd.read_html(f)
         loser_stock_df = loser_stock_df_list[0]
