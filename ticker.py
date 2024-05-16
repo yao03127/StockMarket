@@ -439,7 +439,7 @@ def plot_candle(stock_data, mav_days):
                     ), row=3, col=1)
     fig.add_trace(go.Scatter(x=stock_data.index,
                          y=macd.macd(),
-                         line=dict(color='black', width=2)
+                         line=dict(color='orange', width=2)
                         ), row=3, col=1)
     fig.add_trace(go.Scatter(x=stock_data.index,
                          y=macd.macd_signal(),
@@ -448,7 +448,7 @@ def plot_candle(stock_data, mav_days):
     # Plot stochastics trace on 4th row
     fig.add_trace(go.Scatter(x=stock_data.index,
                          y=stoch.stoch(),
-                         line=dict(color='black', width=2)
+                         line=dict(color='orange', width=2)
                         ), row=4, col=1)
     fig.add_trace(go.Scatter(x=stock_data.index,
                          y=stoch.stoch_signal(),
@@ -1268,7 +1268,7 @@ def twse_candle(twse_data, mav_days):
                     ), row=3, col=1)
     fig.add_trace(go.Scatter(x=twse_data.index,
                          y=macd.macd(),
-                         line=dict(color='black', width=2)
+                         line=dict(color='orange', width=2)
                         ), row=3, col=1)
     fig.add_trace(go.Scatter(x=twse_data.index,
                          y=macd.macd_signal(),
@@ -1277,7 +1277,7 @@ def twse_candle(twse_data, mav_days):
     # Plot stochastics trace on 4th row
     fig.add_trace(go.Scatter(x=twse_data.index,
                          y=stoch.stoch(),
-                         line=dict(color='black', width=2)
+                         line=dict(color='orange', width=2)
                         ), row=4, col=1)
     fig.add_trace(go.Scatter(x=twse_data.index,
                          y=stoch.stoch_signal(),
@@ -1433,7 +1433,7 @@ def tpex_candle(tpex_data, mav_days):
                     ), row=3, col=1)
     fig.add_trace(go.Scatter(x=tpex_data.index,
                          y=macd.macd(),
-                         line=dict(color='black', width=2)
+                         line=dict(color='orange', width=2)
                         ), row=3, col=1)
     fig.add_trace(go.Scatter(x=tpex_data.index,
                          y=macd.macd_signal(),
@@ -1442,7 +1442,7 @@ def tpex_candle(tpex_data, mav_days):
     # Plot stochastics trace on 4th row
     fig.add_trace(go.Scatter(x=tpex_data.index,
                          y=stoch.stoch(),
-                         line=dict(color='black', width=2)
+                         line=dict(color='orange', width=2)
                         ), row=4, col=1)
     fig.add_trace(go.Scatter(x=tpex_data.index,
                          y=stoch.stoch_signal(),
