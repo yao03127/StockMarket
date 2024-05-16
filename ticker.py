@@ -13,7 +13,6 @@ import numpy as np
 import time
 import plotly
 from plotly.subplots import make_subplots
-import matplotlib.pyplot as plt
 from datetime import datetime
 from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
