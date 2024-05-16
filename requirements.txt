@@ -9,3 +9,4 @@ yfinance==0.2.38
 requests>=2.27
 pytz==2024.1
 googletrans==3.1.0a0
+ta == 0.11.0
