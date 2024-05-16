@@ -10,10 +10,16 @@ import pytz
 import geopy
 import re
 import numpy as np
+import time
+import plotly
 from plotly.subplots import make_subplots
+import matplotlib.pyplot as plt
 from datetime import datetime
 from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
+from ta.trend import MACD
+from ta.momentum import StochasticOscillator
+from ta.momentum import RSIIndicator
 
 #美股區
 
@@ -48,6 +54,7 @@ def plot_index(period,time):
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
+
 
 @st.cache_data
 def plot_pct(period,time):
@@ -125,6 +132,8 @@ def plot_foreign(period,time):
     fig.add_trace(go.Scatter(x=jp_close.index, y=jp_close.values, mode='lines', name='日經指數'), row=3, col=2)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
@@ -383,35 +392,96 @@ def stock_data(symbol,start_date,end_date):
 #繪製k線圖
 @st.cache_data
 def plot_candle(stock_data, mav_days):
+    # 移動平均線
+    mav5 = stock_data['Adj Close'].rolling(window=5).mean()  # 5日mav
+    mav20 = stock_data['Adj Close'].rolling(window=20).mean()  # 15日mav
+    mav = stock_data['Adj Close'].rolling(window=mav_days).mean()  # mav_days日mav
+    # MACD
+    macd = MACD(close=stock_data['Adj Close'], 
+                window_slow=26,
+                window_fast=12, 
+                window_sign=9)
+    # stochastic
+    stoch = StochasticOscillator(high=stock_data['High'],
+                                 close=stock_data['Adj Close'],
+                                 low=stock_data['Low'],
+                                 window=14,
+                                 smooth_window=3) 
+    # RSI
+    rsi = RSIIndicator(close=stock_data['Adj Close'], window=14)
+    
     fig = go.Figure()
+    # add subplot properties when initializing fig variable
+    fig = plotly.subplots.make_subplots(rows=5, cols=1, shared_xaxes=True,
+                                        vertical_spacing=0.01, 
+                                        row_heights=[0.5,0.2,0.2,0.2,0.2])
     # K线图
     fig.add_trace(go.Candlestick(x=stock_data.index,
                                  open=stock_data['Open'],
                                  high=stock_data['High'],
                                  low=stock_data['Low'],
                                  close=stock_data['Adj Close']))
-    # 移動平均線
-    mav5 = stock_data['Close'].rolling(window=5).mean()  # 5日mav
-    mav10 = stock_data['Close'].rolling(window=10).mean()  # 10日mav
-    mav15 = stock_data['Close'].rolling(window=15).mean()  # 15日mav
-    mav = stock_data['Close'].rolling(window=mav_days).mean()  # mav_days日mav    
-    fig.add_trace(go.Scatter(x=stock_data.index, y=mav5, mode='lines', name='MAV-5'))
-    fig.add_trace(go.Scatter(x=stock_data.index, y=mav10, mode='lines', name='MAV-10'))
-    fig.add_trace(go.Scatter(x=stock_data.index, y=mav15, mode='lines', name='MAV-15'))
-    fig.add_trace(go.Scatter(x=stock_data.index, y=mav, mode='lines', name=f'MAV-{mav_days}'))
+    fig.add_trace(go.Scatter(x=stock_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'))
+    fig.add_trace(go.Scatter(x=stock_data.index, y=mav20, opacity=0.7,line=dict(color='orange', width=2), name='MAV-20'))
+    fig.add_trace(go.Scatter(x=stock_data.index, y=mav,  opacity=0.7, line=dict(color='purple', width=2),name=f'MAV-{mav_days}'))
+    # Plot volume trace on 2nd row
+    colors = ['green' if row['Open'] - row['Adj Close'] >= 0 
+          else 'red' for index, row in stock_data.iterrows()]
+    fig.add_trace(go.Bar(x=stock_data.index, 
+                     y=stock_data['Volume'],
+                     marker_color=colors
+                    ), row=2, col=1)
+    # Plot MACD trace on 3rd row
+    colorsM = ['green' if val >= 0 
+          else 'red' for val in macd.macd_diff()]
+    fig.add_trace(go.Bar(x=stock_data.index, 
+                     y=macd.macd_diff(),
+                     marker_color=colorsM
+                    ), row=3, col=1)
+    fig.add_trace(go.Scatter(x=stock_data.index,
+                         y=macd.macd(),
+                         line=dict(color='black', width=2)
+                        ), row=3, col=1)
+    fig.add_trace(go.Scatter(x=stock_data.index,
+                         y=macd.macd_signal(),
+                         line=dict(color='blue', width=1)
+                        ), row=3, col=1)
+    # Plot stochastics trace on 4th row
+    fig.add_trace(go.Scatter(x=stock_data.index,
+                         y=stoch.stoch(),
+                         line=dict(color='black', width=2)
+                        ), row=4, col=1)
+    fig.add_trace(go.Scatter(x=stock_data.index,
+                         y=stoch.stoch_signal(),
+                         line=dict(color='blue', width=1)
+                        ), row=4, col=1)
+    # Plot RSI trace on 5th row
+    fig.add_trace(go.Scatter(x=stock_data.index,
+                         y=rsi.rsi(),
+                         line=dict(color='purple', width=2)
+                        ), row=5, col=1)
+    fig.add_trace(go.Scatter(x=stock_data.index,
+                         y=[70]*len(stock_data.index),
+                         line=dict(color='red', width=1),
+                         name='Overbought'
+                        ), row=5, col=1)
+    fig.add_trace(go.Scatter(x=stock_data.index,
+                         y=[30]*len(stock_data.index),
+                         line=dict(color='green', width=1),
+                         name='Oversold'
+                        ), row=5, col=1)
+    # update layout by changing the plot size, hiding legends & rangeslider, and removing gaps between dates
+    fig.update_layout(height=900, width=1200,
+                      showlegend=False,
+                      xaxis_rangeslider_visible=False)
     # 更新圖表佈局
-    fig.update_layout(xaxis_rangeslider_visible=False, xaxis_title='日期', yaxis_title='價格')
-    st.subheader(f'{symbol}-K線圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-#繪製交易量柱狀圖
-@st.cache_data
-def plot_volume(stock_data):
-    fig = go.Figure(data=[go.Bar(x=stock_data.index, y=stock_data['Volume'])])
-    fig.update_layout(xaxis_title='日期', yaxis_title='交易量')
-    st.subheader(f'{symbol}-交易量')
-    fig.layout.update(xaxis_rangeslider_visible=True)
+    fig.update_yaxes(title_text="Price", row=1, col=1)
+    fig.update_yaxes(title_text="Volume", row=2, col=1)
+    fig.update_yaxes(title_text="MACD", showgrid=False, row=3, col=1)
+    fig.update_yaxes(title_text="KD", row=4, col=1)
+    fig.update_yaxes(title_text="RSI", showgrid=False, row=5, col=1)           
+    fig.update_xaxes(rangeslider_visible=False,rangeselector_visible=False)
+    st.subheader(f'{symbol}-技術分析圖')
     st.plotly_chart(fig, use_container_width=True)
 
 #繪製趨勢圖
@@ -599,6 +669,8 @@ def plot_index_tw(period,time):
     fig.add_trace(go.Scatter(x=tw50_close.index, y=tw50_close.values, mode='lines', name='0050'),row=3,col=1)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
@@ -637,6 +709,8 @@ def plot_tw_asia(period,time):
     fig.add_trace(go.Scatter(x=th_close.index, y=th_close.values, mode='lines', name='泰國SET指數'),row=4,col=2)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
+    fig.update_xaxes(title_text="Date", row=1, col=1)
+    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 @st.cache_data
@@ -1145,37 +1219,98 @@ def twse_data(symbol,start_date,end_date):
 #繪製k線圖
 @st.cache_data
 def twse_candle(twse_data, mav_days):
+    # 移動平均線
+    mav5 = twse_data['Adj Close'].rolling(window=5).mean()  # 5日mav
+    mav20 = twse_data['Adj Close'].rolling(window=20).mean()  # 15日mav
+    mav = twse_data['Adj Close'].rolling(window=mav_days).mean()  # mav_days日mav
+    # MACD
+    macd = MACD(close=twse_data['Adj Close'], 
+                window_slow=26,
+                window_fast=12, 
+                window_sign=9)
+    # stochastic
+    stoch = StochasticOscillator(high=twse_data['High'],
+                                 close=twse_data['Adj Close'],
+                                 low=twse_data['Low'],
+                                 window=14,
+                                 smooth_window=3) 
+    # RSI
+    rsi = RSIIndicator(close=twse_data['Adj Close'], window=14) 
     fig = go.Figure()
+    # add subplot properties when initializing fig variable
+    fig = plotly.subplots.make_subplots(rows=5, cols=1, shared_xaxes=True,
+                                        vertical_spacing=0.01, 
+                                        row_heights=[0.5,0.2,0.2,0.2,0.2])
     # K线图
     fig.add_trace(go.Candlestick(x=twse_data.index,
                                  open=twse_data['Open'],
                                  high=twse_data['High'],
                                  low=twse_data['Low'],
                                  close=twse_data['Adj Close'],
-                                 increasing_line_color= 'red', decreasing_line_color= 'green'
+                                 increasing_line_color= 'red', 
+                                 decreasing_line_color= 'green'
                                  ))
-    # 移動平均線
-    mav5 = twse_data['Close'].rolling(window=5).mean()  # 5日mav
-    mav10 = twse_data['Close'].rolling(window=10).mean()  # 10日mav
-    mav15 = twse_data['Close'].rolling(window=15).mean()  # 15日mav
-    mav = twse_data['Close'].rolling(window=mav_days).mean()  # mav_days日mav    
-    fig.add_trace(go.Scatter(x=twse_data.index, y=mav5, mode='lines', name='MAV-5'))
-    fig.add_trace(go.Scatter(x=twse_data.index, y=mav10, mode='lines', name='MAV-10'))
-    fig.add_trace(go.Scatter(x=twse_data.index, y=mav15, mode='lines', name='MAV-15'))
-    fig.add_trace(go.Scatter(x=twse_data.index, y=mav, mode='lines', name=f'MAV-{mav_days}'))
+    fig.add_trace(go.Scatter(x=twse_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'))
+    fig.add_trace(go.Scatter(x=twse_data.index, y=mav20, opacity=0.7,line=dict(color='orange', width=2), name='MAV-20'))
+    fig.add_trace(go.Scatter(x=twse_data.index, y=mav,  opacity=0.7, line=dict(color='purple', width=2),name=f'MAV-{mav_days}'))
+    # Plot volume trace on 2nd row
+    colors = ['green' if row['Open'] - row['Adj Close'] >= 0 
+          else 'red' for index, row in twse_data.iterrows()]
+    fig.add_trace(go.Bar(x=twse_data.index, 
+                     y=twse_data['Volume'],
+                     marker_color=colors
+                    ), row=2, col=1)
+    # Plot MACD trace on 3rd row
+    colorsM = ['green' if val >= 0 
+          else 'red' for val in macd.macd_diff()]
+    fig.add_trace(go.Bar(x=twse_data.index, 
+                     y=macd.macd_diff(),
+                     marker_color=colorsM
+                    ), row=3, col=1)
+    fig.add_trace(go.Scatter(x=twse_data.index,
+                         y=macd.macd(),
+                         line=dict(color='black', width=2)
+                        ), row=3, col=1)
+    fig.add_trace(go.Scatter(x=twse_data.index,
+                         y=macd.macd_signal(),
+                         line=dict(color='blue', width=1)
+                        ), row=3, col=1)
+    # Plot stochastics trace on 4th row
+    fig.add_trace(go.Scatter(x=twse_data.index,
+                         y=stoch.stoch(),
+                         line=dict(color='black', width=2)
+                        ), row=4, col=1)
+    fig.add_trace(go.Scatter(x=twse_data.index,
+                         y=stoch.stoch_signal(),
+                         line=dict(color='blue', width=1)
+                        ), row=4, col=1)
+    # Plot RSI trace on 5th row
+    fig.add_trace(go.Scatter(x=twse_data.index,
+                         y=rsi.rsi(),
+                         line=dict(color='purple', width=2)
+                        ), row=5, col=1)
+    fig.add_trace(go.Scatter(x=twse_data.index,
+                         y=[70]*len(twse_data.index),
+                         line=dict(color='red', width=1),
+                         name='Overbought'
+                        ), row=5, col=1)
+    fig.add_trace(go.Scatter(x=twse_data.index,
+                         y=[30]*len(twse_data.index),
+                         line=dict(color='green', width=1),
+                         name='Oversold'
+                        ), row=5, col=1)
+    # update layout by changing the plot size, hiding legends & rangeslider, and removing gaps between dates
+    fig.update_layout(height=900, width=1200,
+                      showlegend=False,
+                      xaxis_rangeslider_visible=False)
     # 更新圖表佈局
-    fig.update_layout(xaxis_rangeslider_visible=False, xaxis_title='日期', yaxis_title='價格')
-    st.subheader(f'{symbol}-K線圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-#繪製交易量柱狀圖
-@st.cache_data
-def twse_volume(twse_data):
-    fig = go.Figure(data=[go.Bar(x=twse_data.index, y=twse_data['Volume'])])
-    fig.update_layout(xaxis_title='日期', yaxis_title='交易量')
-    st.subheader(f'{symbol}-交易量')
-    fig.layout.update(xaxis_rangeslider_visible=True)
+    fig.update_yaxes(title_text="Price", row=1, col=1)
+    fig.update_yaxes(title_text="Volume", row=2, col=1)
+    fig.update_yaxes(title_text="MACD", showgrid=False, row=3, col=1)
+    fig.update_yaxes(title_text="KD", row=4, col=1)
+    fig.update_yaxes(title_text="RSI", showgrid=False, row=5, col=1)           
+    fig.update_xaxes(rangeslider_visible=False,rangeselector_visible=False)
+    st.subheader(f'{symbol}-技術分析圖')
     st.plotly_chart(fig, use_container_width=True)
 
 #繪製趨勢圖
@@ -1249,37 +1384,98 @@ def tpex_data(symbol,start_date,end_date):
 #繪製k線圖
 @st.cache_data
 def tpex_candle(tpex_data, mav_days):
+    # 移動平均線
+    mav5 = tpex_data['Adj Close'].rolling(window=5).mean()  # 5日mav
+    mav20 = tpex_data['Adj Close'].rolling(window=20).mean()  # 15日mav
+    mav = tpex_data['Adj Close'].rolling(window=mav_days).mean()  # mav_days日mav
+    # MACD
+    macd = MACD(close=tpex_data['Adj Close'], 
+                window_slow=26,
+                window_fast=12, 
+                window_sign=9)
+    # stochastic
+    stoch = StochasticOscillator(high=tpex_data['High'],
+                                 close=tpex_data['Adj Close'],
+                                 low=tpex_data['Low'],
+                                 window=14,
+                                 smooth_window=3) 
+    # RSI
+    rsi = RSIIndicator(close=tpex_data['Adj Close'], window=14) 
     fig = go.Figure()
+    # add subplot properties when initializing fig variable
+    fig = plotly.subplots.make_subplots(rows=5, cols=1, shared_xaxes=True,
+                                        vertical_spacing=0.01, 
+                                        row_heights=[0.5,0.2,0.2,0.2,0.2])
     # K线图
     fig.add_trace(go.Candlestick(x=tpex_data.index,
                                  open=tpex_data['Open'],
                                  high=tpex_data['High'],
                                  low=tpex_data['Low'],
                                  close=tpex_data['Adj Close'],
-                                 increasing_line_color= 'red', decreasing_line_color= 'green'
+                                 increasing_line_color= 'red', 
+                                 decreasing_line_color= 'green',
                                  ))
-    # 移動平均線
-    mav5 = tpex_data['Close'].rolling(window=5).mean()  # 5日mav
-    mav10 = tpex_data['Close'].rolling(window=10).mean()  # 10日mav
-    mav15 = tpex_data['Close'].rolling(window=15).mean()  # 15日mav
-    mav = tpex_data['Close'].rolling(window=mav_days).mean()  # mav_days日mav    
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav5, mode='lines', name='MAV-5'))
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav10, mode='lines', name='MAV-10'))
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav15, mode='lines', name='MAV-15'))
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav, mode='lines', name=f'MAV-{mav_days}'))
+    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'))
+    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav20, opacity=0.7,line=dict(color='orange', width=2), name='MAV-20'))
+    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav,  opacity=0.7, line=dict(color='purple', width=2),name=f'MAV-{mav_days}'))
+    # Plot volume trace on 2nd row
+    colors = ['green' if row['Open'] - row['Adj Close'] >= 0 
+          else 'red' for index, row in tpex_data.iterrows()]
+    fig.add_trace(go.Bar(x=tpex_data.index, 
+                     y=tpex_data['Volume'],
+                     marker_color=colors
+                    ), row=2, col=1)
+    # Plot MACD trace on 3rd row
+    colorsM = ['green' if val >= 0 
+          else 'red' for val in macd.macd_diff()]
+    fig.add_trace(go.Bar(x=tpex_data.index, 
+                     y=macd.macd_diff(),
+                     marker_color=colorsM
+                    ), row=3, col=1)
+    fig.add_trace(go.Scatter(x=tpex_data.index,
+                         y=macd.macd(),
+                         line=dict(color='black', width=2)
+                        ), row=3, col=1)
+    fig.add_trace(go.Scatter(x=tpex_data.index,
+                         y=macd.macd_signal(),
+                         line=dict(color='blue', width=1)
+                        ), row=3, col=1)
+    # Plot stochastics trace on 4th row
+    fig.add_trace(go.Scatter(x=tpex_data.index,
+                         y=stoch.stoch(),
+                         line=dict(color='black', width=2)
+                        ), row=4, col=1)
+    fig.add_trace(go.Scatter(x=tpex_data.index,
+                         y=stoch.stoch_signal(),
+                         line=dict(color='blue', width=1)
+                        ), row=4, col=1)
+    # Plot RSI trace on 5th row
+    fig.add_trace(go.Scatter(x=tpex_data.index,
+                         y=rsi.rsi(),
+                         line=dict(color='purple', width=2)
+                        ), row=5, col=1)
+    fig.add_trace(go.Scatter(x=tpex_data.index,
+                         y=[70]*len(tpex_data.index),
+                         line=dict(color='red', width=1),
+                         name='Overbought'
+                        ), row=5, col=1)
+    fig.add_trace(go.Scatter(x=tpex_data.index,
+                         y=[30]*len(tpex_data.index),
+                         line=dict(color='green', width=1),
+                         name='Oversold'
+                        ), row=5, col=1)
+    # update layout by changing the plot size, hiding legends & rangeslider, and removing gaps between dates
+    fig.update_layout(height=900, width=1200,
+                      showlegend=False,
+                      xaxis_rangeslider_visible=False)
     # 更新圖表佈局
-    fig.update_layout(xaxis_rangeslider_visible=False, xaxis_title='日期', yaxis_title='價格')
-    st.subheader(f'{symbol}-K線圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-#繪製交易量柱狀圖
-@st.cache_data
-def tpex_volume(tpex_data):
-    fig = go.Figure(data=[go.Bar(x=tpex_data.index, y=tpex_data['Volume'])])
-    fig.update_layout(xaxis_title='日期', yaxis_title='交易量')
-    st.subheader(f'{symbol}-交易量')
-    fig.layout.update(xaxis_rangeslider_visible=True)
+    fig.update_yaxes(title_text="Price", row=1, col=1)
+    fig.update_yaxes(title_text="Volume", row=2, col=1)
+    fig.update_yaxes(title_text="MACD", showgrid=False, row=3, col=1)
+    fig.update_yaxes(title_text="KD", row=4, col=1)
+    fig.update_yaxes(title_text="RSI", showgrid=False, row=5, col=1)           
+    fig.update_xaxes(rangeslider_visible=False,rangeselector_visible=False)
+    st.subheader(f'{symbol}-技術分析圖')
     st.plotly_chart(fig, use_container_width=True)
 
 #繪製趨勢圖
@@ -1451,7 +1647,6 @@ elif market == '美國' and options == '交易數據':
             stock_data = stock_data(symbol, start_date, end_date)
             if stock_data is not None:
                 plot_candle(stock_data, mav_days)  # 將MAV天數傳遞給 plot_candle 函式
-                plot_volume(stock_data)
                 plot_trend(stock_data)
             else:
                 st.error(f"無法獲取{symbol}交易數據")
@@ -1627,7 +1822,6 @@ elif market == '台灣' and options == '交易數據':
             twse_data = twse_data(symbol, start_date, end_date)
             if twse_data is not None:
                 twse_candle(twse_data, mav_days)  # 將MAV天數傳遞給 plot_candle 函式
-                twse_volume(twse_data)
                 twse_trend(twse_data)
             else:
                 st.error(f"無法獲取{symbol}交易數據or{symbol}為上櫃興櫃公司")
@@ -1657,7 +1851,6 @@ elif market == '台灣' and options == '交易數據':
             tpex_data = tpex_data(symbol, start_date, end_date)
             if tpex_data is not None:
                 tpex_candle(tpex_data, mav_days)  # 將MAV天數傳遞給 plot_candle 函式
-                tpex_volume(tpex_data)
                 tpex_trend(tpex_data)
             else:
                 st.error(f"無法獲取{symbol}交易數據or{symbol}為上市公司")
