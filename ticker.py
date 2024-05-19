@@ -707,10 +707,10 @@ def app():
                     df = pd.DataFrame(news_data)
                     st.subheader(f"{symbol}-近期相關消息")
                     st.write(df)  # 显示表格
-                    st.subheader(f"{symbol}-近期相關消息連結")
                     # 打印所有新闻链接
-                    for news in news_data:
-                        st.write(f'**[{news["Title"]}]({news["URL"]})**')
+                    with st.expander(f'展開{symbol}-近期相關消息連結'):
+                        for news in news_data:
+                            st.write(f'**[{news["Title"]}]({news["URL"]})**')
                 else:
                     st.write(f"查無{symbol}近期相關消息")
 
