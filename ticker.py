@@ -267,30 +267,22 @@ def get_stock_news(symbol):
     # 发送HTTP GET请求获取网页内容
     response = res.get(url, headers=headers)
     response.raise_for_status()  # 检查请求是否成功
-    # 尝试显式指定编码为UTF-8
-    response.encoding = 'utf-8'
     # 解析HTML
     soup = BeautifulSoup(response.text, 'html.parser')
-    # 打印HTML内容的一部分以进行调试
-    st.write(soup.prettify()[:2000])  # 打印前2000个字符
     # 查找所有新闻项
     news_table = soup.find('table', class_='fullview-news-outer')
-    # 如果未找到新闻表格，打印调试信息
-    if not news_table:
-        st.error("Could not find news table. Please check the HTML structure.")
-        return []
     news_items = news_table.find_all('tr')
     news_data = []
     for news_item in news_items:
         news_link = news_item.find('a', class_='tab-link-news')
-        news_date = news_item.find('td', class_='nn-date').text if news_item.find('td', class_='nn-date') else ''
         if news_link:
             news_title = news_link.text
             news_url = news_link['href']
-            news_data.append({'Date': news_date, 'Title': news_title, 'URL': news_url})
+            news_data.append({'Title': news_title, 'URL': news_url})
     return news_data
-
+     
 # 台股區
+
 @st.cache_data
 def plot_index_tw(period,time):
     # Fetch historical data for S&P 500
