@@ -261,7 +261,7 @@ def get_stock_news(symbol):
     try:
         response = res.get(url, headers=headers)
         response.raise_for_status()  # 确保请求成功
-    except requests.exceptions.RequestException as e:
+    except res.exceptions.RequestException as e:
         st.error(f"無法獲取{symbol}相關消息:{e}")
         return None
     soup = BeautifulSoup(response.text, 'html.parser')
