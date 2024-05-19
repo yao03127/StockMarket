@@ -1,13 +1,14 @@
-streamlit==1.34.0
-pandas>2.0
+streamlit>=1.34.0
+pandas>=2.0
 numpy<=1.26.4
-plotly == 5.22.0
-geopy == 2.4.1
-streamlit-folium==0.20.0
-folium==0.16.0
-yfinance==0.2.38
-requests>=2.27
-pytz==2024.1
-googletrans==3.1.0a0
-ta == 0.11.0
-twstock == 1.4.0
+plotly>=5.22.0
+geopy>=2.4.1
+streamlit-folium>=0.20.0
+folium>=0.16.0
+yfinance>=0.2.38
+requests>=2.31.0
+pytz>=2024.1
+googletrans>=3.1.0a0
+ta>=0.11.0
+twstock>=1.4.0
+beautifulsoup4>=4.12.2
