@@ -1,4 +1,5 @@
 import yfinance as yf
+import twstock
 import pandas as pd
 import streamlit as st
 import plotly.graph_objs as go
@@ -13,12 +14,13 @@ import numpy as np
 import time
 import plotly
 from plotly.subplots import make_subplots
-from datetime import datetime
+from datetime import datetime,timedelta
 from streamlit_folium import folium_static
 from geopy.geocoders import Nominatim
 from ta.trend import MACD
 from ta.momentum import StochasticOscillator
 from ta.momentum import RSIIndicator
+import talib
 
 #美股區
 
@@ -238,384 +240,18 @@ def dji_symbol():
     dji = pd.read_html(url.content, encoding='utf-8')
     st.write(dji[2])
 
-# 獲取公司基本資訊
-@st.cache_data
-def company_info(symbol):
-    try:
-        stock_info = yf.Ticker(symbol)
-        com_info = stock_info.info
-        return com_info
-    except Exception as e:
-        st.error(f"無法獲取{symbol}基本資訊：{str(e)}")
-        return None
+# 定义函数以获取股票数据
+def get_stock_data(symbol,time_range):
+    stock_data = yf.download(symbol,period=time_range)
+    return stock_data
 
-@st.cache_data    
-def display_location(com_info):
-    if 'city' in com_info and 'country' in com_info:
-        city = com_info['city']
-        country = com_info['country']
-
-        # 使用 Nominatim 服务进行地理编码
-        geolocator = Nominatim(user_agent="streamlit_app")
-        location = geolocator.geocode(f"{city}, {country}")
-        if location:
-            # 使用 folium 创建地图，并将其定位到公司位置
-            map = folium.Map(location=[location.latitude, location.longitude], zoom_start=10)
-            # 添加标记
-            folium.Marker([location.latitude, location.longitude], popup=f"{city}, {country}").add_to(map)
-            # 使用 streamlit-folium 显示地图
-            folium_static(map)
-        else:
-            st.error(f"無法找到{symbol}位置")
-
-@st.cache_data
-def display_info(com_info):
-    if com_info:        
-        selected_indicators = ['longName', 'country', 'city', 'marketCap', 'totalRevenue', 'grossMargins', 'operatingMargins',
-                               'profitMargins', 'trailingEps', 'pegRatio', 'dividendRate', 'payoutRatio', 'bookValue',
-                               'operatingCashflow', 'freeCashflow', 'returnOnEquity']
-
-        selected_info = {indicator: com_info.get(indicator, '') for indicator in selected_indicators}
-        #建立字典翻譯
-        translation = {
-            'longName': '公司名稱',
-            'country': '國家',
-            'city': '城市',
-            'marketCap': '市值',
-            'totalRevenue': '總收入',
-            'grossMargins': '毛利率',
-            'operatingMargins': '營業利潤率', 
-            'profitMargins': '净利率',
-            'trailingEps': '每股收益',
-            'pegRatio': 'PEG 比率',
-            'dividendRate': '股息率',
-            'payoutRatio': '股息支付比例',
-            'bookValue': '每股淨資產',
-            'operatingCashflow': '營運現金流',
-            'freeCashflow': '自由現金流',
-            'returnOnEquity': '股東權益報酬率'
-        }
-        #Pandas DataFrame
-        company_info = pd.DataFrame.from_dict(selected_info,orient='index',columns=['Value'])
-        company_info.rename(index=translation,inplace=True)
-        #轉換成百分比
-        percent_columns = ['毛利率', '營業利潤率', '净利率', '股息率', '股息支付比例', '股東權益報酬率']
-        for col in percent_columns:
-            if col in company_info.index:
-                company_info.at[col, 'Value'] = pd.to_numeric(company_info.at[col, 'Value'], errors='coerce')  # 将非数字转换为 NaN
-                company_info.at[col, 'Value'] = f"{company_info.at[col, 'Value']:.2%}" if pd.notna(company_info.at[col, 'Value']) else None
-        #千分位表示
-        company_info['Value'] = company_info['Value'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
-        st.subheader(f"{symbol}-基本資訊")
-        st.table(company_info)
-        st.subheader(f"{symbol}-位置資訊")
-        display_location(com_info)
-    else:
-        st.error(f"無法獲取{symbol}-基本訊息")
-
-#財報-年度
-@st.cache_data
-def financial_statements(symbol):
-    try:
-        stock_info = yf.Ticker(symbol)
-        balance_sheet = stock_info.balance_sheet
-        income_statement = stock_info.income_stmt
-        cash_flow = stock_info.cashflow
-        return balance_sheet, income_statement, cash_flow
-    except Exception as e:
-        st.error(f"獲取{symbol}-財報發生錯誤：{str(e)}")
-        return None, None, None
-
-@st.cache_data
-def balance(balance_sheet):
-    if balance_sheet is not None:
-        st.subheader(f"{symbol}-資產負債表(年度)")
-        st.write(balance_sheet)
-
-@st.cache_data
-def income(income_statement):
-    if income_statement is not None:
-        st.subheader(f"{symbol}-綜合損益表(年度)")
-        st.write(income_statement)
-
-@st.cache_data
-def cashflow(cash_flow):
-    if cash_flow is not None:
-        st.subheader(f"{symbol}-現金流量表(年度)")
-        st.write(cash_flow)
-
-#財報-季度
-@st.cache_data
-def financial_statements_quarterly(symbol):
-    try:
-        stock_info = yf.Ticker(symbol)
-        balance_sheet_quarterly = stock_info.quarterly_balance_sheet
-        income_statement_quarterly = stock_info.quarterly_income_stmt
-        cash_flow_quarterly = stock_info.quarterly_cashflow  # 這裡修正了錯誤
-        return balance_sheet_quarterly, income_statement_quarterly, cash_flow_quarterly
-    except Exception as e:
-        st.error(f"獲取{symbol}-財報發生錯誤：{str(e)}")
-        return None, None, None
-
-@st.cache_data
-def balance_quarterly(balance_sheet_quarterly):
-    if balance_sheet_quarterly is not None:
-        st.subheader(f"{symbol}-資產負債表(季度)")
-        st.write(balance_sheet_quarterly)
-
-@st.cache_data
-def income_quarterly(income_statement_quarterly):
-    if income_statement_quarterly is not None:
-        st.subheader(f"{symbol}-綜合損益表(季度)")
-        st.write(income_statement_quarterly)
-
-@st.cache_data
-def cashflow_quarterly(cash_flow_quarterly):
-    if cash_flow_quarterly is not None:
-        st.subheader(f"{symbol}-現金流量表(季度)")
-        st.write(cash_flow_quarterly)
-
-#獲取歷史交易數據
-@st.cache_data
-def stock_data(symbol,start_date,end_date):
-    try:
-        stock_data = yf.download(symbol,start=start_date,end=end_date)
-        st.subheader('交易數據')
-        with st.expander("展開數據"):
-            st.write(stock_data)
-        return stock_data
-    except Exception as e:
-        st.error(f"無法獲取{symbol}-交易數據：{str(e)}")
-        return None
-
-#繪製k線圖
-@st.cache_data
-def plot_candle(stock_data, mav_days):
-    # 移動平均線
-    mav5 = stock_data['Adj Close'].rolling(window=5).mean()  # 5日mav
-    mav20 = stock_data['Adj Close'].rolling(window=20).mean()  # 15日mav
-    mav = stock_data['Adj Close'].rolling(window=mav_days).mean()  # mav_days日mav
-    # MACD
-    macd = MACD(close=stock_data['Adj Close'], 
-                window_slow=26,
-                window_fast=12, 
-                window_sign=9)
-    # stochastic
-    stoch = StochasticOscillator(high=stock_data['High'],
-                                 close=stock_data['Adj Close'],
-                                 low=stock_data['Low'],
-                                 window=14,
-                                 smooth_window=3) 
-    # RSI
-    rsi = RSIIndicator(close=stock_data['Adj Close'], window=14)
-    
-    fig = go.Figure()
-    # add subplot properties when initializing fig variable
-    fig = plotly.subplots.make_subplots(rows=5, cols=1, shared_xaxes=True,
-                                        vertical_spacing=0.01, 
-                                        row_heights=[0.5,0.2,0.2,0.2,0.2])
-    # K线图
-    fig.add_trace(go.Candlestick(x=stock_data.index,
-                                 open=stock_data['Open'],
-                                 high=stock_data['High'],
-                                 low=stock_data['Low'],
-                                 close=stock_data['Adj Close']))
-    fig.add_trace(go.Scatter(x=stock_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'))
-    fig.add_trace(go.Scatter(x=stock_data.index, y=mav20, opacity=0.7,line=dict(color='orange', width=2), name='MAV-20'))
-    fig.add_trace(go.Scatter(x=stock_data.index, y=mav,  opacity=0.7, line=dict(color='purple', width=2),name=f'MAV-{mav_days}'))
-    # Plot volume trace on 2nd row
-    colors = ['green' if row['Open'] - row['Adj Close'] >= 0 
-          else 'red' for index, row in stock_data.iterrows()]
-    fig.add_trace(go.Bar(x=stock_data.index, 
-                     y=stock_data['Volume'],
-                     marker_color=colors
-                    ), row=2, col=1)
-    # Plot MACD trace on 3rd row
-    colorsM = ['green' if val >= 0 
-          else 'red' for val in macd.macd_diff()]
-    fig.add_trace(go.Bar(x=stock_data.index, 
-                     y=macd.macd_diff(),
-                     marker_color=colorsM
-                    ), row=3, col=1)
-    fig.add_trace(go.Scatter(x=stock_data.index,
-                         y=macd.macd(),
-                         line=dict(color='orange', width=2)
-                        ), row=3, col=1)
-    fig.add_trace(go.Scatter(x=stock_data.index,
-                         y=macd.macd_signal(),
-                         line=dict(color='blue', width=1)
-                        ), row=3, col=1)
-    # Plot stochastics trace on 4th row
-    fig.add_trace(go.Scatter(x=stock_data.index,
-                         y=stoch.stoch(),
-                         line=dict(color='orange', width=2)
-                        ), row=4, col=1)
-    fig.add_trace(go.Scatter(x=stock_data.index,
-                         y=stoch.stoch_signal(),
-                         line=dict(color='blue', width=1)
-                        ), row=4, col=1)
-    # Plot RSI trace on 5th row
-    fig.add_trace(go.Scatter(x=stock_data.index,
-                         y=rsi.rsi(),
-                         line=dict(color='purple', width=2)
-                        ), row=5, col=1)
-    fig.add_trace(go.Scatter(x=stock_data.index,
-                         y=[70]*len(stock_data.index),
-                         line=dict(color='red', width=1),
-                         name='Overbought'
-                        ), row=5, col=1)
-    fig.add_trace(go.Scatter(x=stock_data.index,
-                         y=[30]*len(stock_data.index),
-                         line=dict(color='green', width=1),
-                         name='Oversold'
-                        ), row=5, col=1)
-    # update layout by changing the plot size, hiding legends & rangeslider, and removing gaps between dates
-    fig.update_layout(height=900, width=1200,
-                      showlegend=False,
-                      xaxis_rangeslider_visible=False)
-    # 更新圖表佈局
-    fig.update_yaxes(title_text="Price", row=1, col=1)
-    fig.update_yaxes(title_text="Volume", row=2, col=1)
-    fig.update_yaxes(title_text="MACD", showgrid=False, row=3, col=1)
-    fig.update_yaxes(title_text="KD", row=4, col=1)
-    fig.update_yaxes(title_text="RSI", showgrid=False, row=5, col=1)           
-    fig.update_xaxes(rangeslider_visible=False,rangeselector_visible=False)
-    st.subheader(f'{symbol}-技術分析圖')
-    st.plotly_chart(fig, use_container_width=True)
-
-#繪製趨勢圖
-@st.cache_data
-def plot_trend(stock_data):
-    fig = go.Figure()
-    # 收盤價線
-    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Adj Close'], mode='lines', name='調整後收盤價'))
-    # 開盤價線
-    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Open'], mode='lines', name='開盤價'))
-    # 更新佈局
-    fig.update_layout(xaxis_title='日期', yaxis_title='')
-    # 顯示圖表
-    st.subheader(f'{symbol}-趨勢圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-#股票比較
-@st.cache_data
-def stock_data_vs(symbols,start_date,end_date):
-    try:
-        stock_data = yf.download(symbols, start=start_date, end=end_date)
-        stock_data = stock_data.drop(['Open','High','Low','Close'], axis=1)
-        st.subheader('交易數據')
-        with st.expander("展開數據"):
-            st.write(stock_data)
-        return stock_data
-    except Exception as e:
-        st.error(f"無法獲取交易數據: {str(e)}")
-        return None
-
-@st.cache_data
-def plot_trend_vs(stock_data, symbols):
-    fig = go.Figure()
-    for symbol in symbols:
-        if symbol in stock_data.columns.get_level_values(1):
-            df = stock_data.xs(symbol, level=1, axis=1)
-            df['Adj Close Log'] = np.log(df['Adj Close'])  # 對 Adj Close 進行對數轉換
-            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close Log'], mode='lines', name=symbol))
-    fig.update_layout(xaxis_title='日期', yaxis_title='價格')
-    st.subheader('趨勢比較圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-@st.cache_data
-def plot_volume_chart(stock_data,symbols):
-    fig = go.Figure()
-    for symbol in symbols:
-        if symbol in stock_data.columns.get_level_values(1):
-            df = stock_data.xs(symbol, level=1, axis=1)
-            fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name=symbol))
-    fig.update_layout(xaxis_title='日期', yaxis_title='交易量')
-    st.subheader('交易量比較圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-# 內部交易
-@st.cache_data
-def stock_insider_transactions(symbol, head):
-    translation = {
-        'Shares':'股份',
-        'Value':'價值',
-        'Text':'事件',
-        'Insider':'內部人員',
-        'Position':'職位',
-        'Start Date':'開始日期',
-        }
-    try:
-        ticker = yf.Ticker(symbol)
-        insider_transactions = ticker.insider_transactions
-        insider_transactions = insider_transactions.drop(columns=['URL','Transaction','Ownership'])
-        insider_transactions = insider_transactions.rename(columns=translation)
-        if insider_transactions is not None and not insider_transactions.empty:
-            if head > 0:
-                insider_transactions = insider_transactions.head(head)               
-                # 將數字轉換為千位數格式
-                insider_transactions['股份'] = insider_transactions['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
-                insider_transactions['價值'] = insider_transactions['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
-                
-                st.subheader(f'{symbol}-最近{head}筆內部動作')
-                st.write(insider_transactions)
-            else:
-                st.warning("請輸入大於 0 的數字")
-        else:
-            st.error(f"無法獲取{symbol}內部交易數據或數據為空")
-    except Exception as e:
-        st.error(f"獲取{symbol}內部交易數據時出錯：{str(e)}")
-
-#機構持股
-@st.cache_data
-def stock_institutional_holders(symbol):
-    translation = {
-        'Date Reported': '日期',
-        'Holder': '機構名稱',
-        'pctHeld': '持股百分比',
-        'Shares': '股份',
-        'Value': '價值'
-    }
-    ticker = yf.Ticker(symbol)  # 使用參數中的 symbol 創建 Ticker 物件
-    institutional_holders = ticker.institutional_holders
-    institutional_holders = institutional_holders.rename(columns=translation) 
-    # 將百分比轉換為百分數形式
-    institutional_holders['持股百分比'] = institutional_holders['持股百分比'].apply(lambda x: f"{x:.2f}%" if isinstance(x, float) else x)   
-    # 將數字轉換為千位數格式
-    institutional_holders['股份'] = institutional_holders['股份'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, int) else x)
-    institutional_holders['價值'] = institutional_holders['價值'].apply(lambda x: "${:,.0f}".format(x) if isinstance(x, int) else x)
-    st.subheader(f'持有{symbol}的機構')
-    st.write(institutional_holders)
-    return institutional_holders
-
-#機構買賣
-@st.cache_data
-def stock_upgrades_downgrades(symbol, head):
-    translation = {
-        'GradeDate':'日期',
-        'Firm':'機構',
-        'ToGrade':'最新動作',
-        'FromGrade':'之前動作',
-        'Action':'立場',
-        }
-    try:
-        ticker = yf.Ticker(symbol)
-        upgrades_downgrade = ticker.upgrades_downgrades
-        upgrades_downgrade = upgrades_downgrade.rename(columns=translation)
-        if upgrades_downgrade is not None and not upgrades_downgrade.empty:
-            if head > 0:
-                upgrades_downgrade = upgrades_downgrade.head(head)               
-                st.subheader(f'機構買賣{symbol}最近{head}筆數據')
-                st.write(upgrades_downgrade)
-            else:
-                st.warning("請輸入大於 0 的數字")
-        else:
-            st.error(f"無法獲取持有{symbol}的機構買賣數據或數據為空")
-    except Exception as e:
-        st.error(f"獲取機構買賣{symbol}數據時出錯：{str(e)}")
+# 计算价格差异的函数
+def calculate_price_difference(stock_data, period_days):
+    latest_price = stock_data.iloc[-1]["Adj Close"]  # 获取最新的收盘价
+    previous_price = stock_data.iloc[-period_days]["Adj Close"] if len(stock_data) > period_days else stock_data.iloc[0]["Adj Close"]  # 获取特定天数前的收盘价
+    price_difference = latest_price - previous_price  # 计算价格差异
+    percentage_difference = (price_difference / previous_price) * 100  # 计算百分比变化
+    return price_difference, percentage_difference  # 返回价格差异和百分比变化
 
 #相關新聞
 @st.cache_data
@@ -864,1008 +500,340 @@ def shz_symbol():
     else:
         st.error('無法獲取數據')
 
-#公司基本資訊
-@st.cache_data
-def twse_info(symbol):
-    try:
-        symbol_tw = symbol + ".tw"  # 在股票代碼後加上.tw
-        stock_info = yf.Ticker(symbol_tw)
-        com_info = stock_info.info
-        return com_info
-    except Exception as e:
-        st.error(f"無法獲取{symbol}基本資訊or{symbol}為上櫃興櫃公司：{str(e)}")
-        return None
+# 定义函数以获取股票数据
+def get_twstock_data(symbol,time_range):
+    today = datetime.today()
+    years_ago = today - timedelta(days=time_range*365)  # 粗略計算，不考慮閏年
+    year = years_ago.year
+    month = years_ago.month
+    stock = twstock.Stock(symbol)
+    stock_data = stock.fetch_from(year,month)
+    stock_data = pd.DataFrame(stock_data)
+    return stock_data
 
-@st.cache_data
-def tpex_info(symbol):
-    try:
-        symbol_tw = symbol + ".two"  # 在股票代碼後加上.two
-        stock_info = yf.Ticker(symbol_tw)
-        com_info = stock_info.info
-        return com_info
-    except Exception as e:
-        st.error(f"無法獲取{symbol}基本資訊or{symbol}為上市公司：{str(e)}")
-        return None
+# 定义函数以获取股票数据
+def get_twstock_month(symbol,time_range):
+    today = datetime.today()
+    months_ago_date = today - timedelta(days=time_range*30)  # 粗略计算一个月为30天
+    year = months_ago_date.year
+    month = months_ago_date.month
+    stock = twstock.Stock(symbol)
+    stock_data = stock.fetch_from(year,month)
+    stock_data = pd.DataFrame(stock_data)
+    return stock_data
 
-@st.cache_data    
-def display_location(twse_info):
-    if 'city' in twse_info and 'country' in twse_info:
-        city = twse_info['city']
-        country = twse_info['country']
-
-        # 使用 Nominatim 服务进行地理编码
-        geolocator = Nominatim(user_agent="streamlit_app")
-        location = geolocator.geocode(f"{city}, {country}")
-
-        if location:
-            # 使用 folium 创建地图，并将其定位到公司位置
-            map = folium.Map(location=[location.latitude, location.longitude], zoom_start=10)
-            # 添加标记
-            folium.Marker([location.latitude, location.longitude], popup=f"{city}, {country}").add_to(map)
-            # 使用 streamlit-folium 显示地图
-            folium_static(map)
-        else:
-            st.error(f"無法找到{symbol}位置or{symbol}為上櫃興櫃公司")
-
-@st.cache_data    
-def display_location(tpex_info):
-    if 'city' in tpex_info and 'country' in tpex_info:
-        city = tpex_info['city']
-        country = tpex_info['country']
-        # 使用 Nominatim 服务进行地理编码
-        geolocator = Nominatim(user_agent="streamlit_app")
-        location = geolocator.geocode(f"{city}, {country}")
-        if location:
-            # 使用 folium 创建地图，并将其定位到公司位置
-            map = folium.Map(location=[location.latitude, location.longitude], zoom_start=10)
-            # 添加标记
-            folium.Marker([location.latitude, location.longitude], popup=f"{city}, {country}").add_to(map)
-            # 使用 streamlit-folium 显示地图
-            folium_static(map)
-        else:
-            st.error(f"無法找到{symbol}位置or{symbol}為上市公司")
-
-@st.cache_data
-def display_info(twse_info):
-    if twse_info:
-        
-        selected_indicators = ['longName', 'country', 'city', 'marketCap', 'totalRevenue', 'grossMargins', 'operatingMargins',
-                               'profitMargins', 'trailingEps', 'pegRatio', 'dividendRate', 'payoutRatio', 'bookValue',
-                               'operatingCashflow', 'freeCashflow', 'returnOnEquity']
-        selected_info = {indicator: twse_info.get(indicator, '') for indicator in selected_indicators}
-
-        #建立字典翻譯
-        translation = {
-            'longName': '公司名稱',
-            'country': '國家',
-            'city': '城市',
-            'marketCap': '市值',
-            'totalRevenue': '總收入',
-            'grossMargins': '毛利率',
-            'operatingMargins': '營業利潤率', 
-            'profitMargins': '净利率',
-            'trailingEps': '每股收益',
-            'pegRatio': 'PEG 比率',
-            'dividendRate': '股息率',
-            'payoutRatio': '股息支付比例',
-            'bookValue': '每股淨資產',
-            'operatingCashflow': '營運現金流',
-            'freeCashflow': '自由現金流',
-            'returnOnEquity': '股東權益報酬率'
-        }
-        #Pandas DataFrame
-        company_info = pd.DataFrame.from_dict(selected_info,orient='index',columns=['Value'])
-        company_info.rename(index=translation,inplace=True)
-        #轉換成百分比
-        percent_columns = ['毛利率', '營業利潤率', '净利率', '股息率', '股息支付比例', '股東權益報酬率']
-        for col in percent_columns:
-            if col in company_info.index:
-                company_info.at[col, 'Value'] = pd.to_numeric(company_info.at[col, 'Value'], errors='coerce')  # 将非数字转换为 NaN
-                company_info.at[col, 'Value'] = f"{company_info.at[col, 'Value']:.2%}" if pd.notna(company_info.at[col, 'Value']) else None
-        #千分位表示
-        company_info['Value'] = company_info['Value'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
-        st.subheader(f"{symbol}-基本資訊")
-        st.table(company_info)
-        st.subheader(f"{symbol}-位置資訊")
-        display_location(twse_info)
-    else:
-        st.error(f"無法獲取{symbol}-基本訊息or{symbol}為上櫃興櫃公司")
-
-@st.cache_data
-def display_info(tpex_info):
-    if tpex_info:
-        
-        selected_indicators = ['longName', 'country', 'city', 'marketCap', 'totalRevenue', 'grossMargins', 'operatingMargins',
-                               'profitMargins', 'trailingEps', 'pegRatio', 'dividendRate', 'payoutRatio', 'bookValue',
-                               'operatingCashflow', 'freeCashflow', 'returnOnEquity']
-        selected_info = {indicator: tpex_info.get(indicator, '') for indicator in selected_indicators}
-        #建立字典翻譯
-        translation = {
-            'longName': '公司名稱',
-            'country': '國家',
-            'city': '城市',
-            'marketCap': '市值',
-            'totalRevenue': '總收入',
-            'grossMargins': '毛利率',
-            'operatingMargins': '營業利潤率', 
-            'profitMargins': '净利率',
-            'trailingEps': '每股收益',
-            'pegRatio': 'PEG 比率',
-            'dividendRate': '股息率',
-            'payoutRatio': '股息支付比例',
-            'bookValue': '每股淨資產',
-            'operatingCashflow': '營運現金流',
-            'freeCashflow': '自由現金流',
-            'returnOnEquity': '股東權益報酬率'
-        }
-        #Pandas DataFrame
-        company_info = pd.DataFrame.from_dict(selected_info,orient='index',columns=['Value'])
-        company_info.rename(index=translation,inplace=True)
-        #轉換成百分比
-        percent_columns = ['毛利率', '營業利潤率', '净利率', '股息率', '股息支付比例', '股東權益報酬率']
-        for col in percent_columns:
-            if col in company_info.index:
-                company_info.at[col, 'Value'] = pd.to_numeric(company_info.at[col, 'Value'], errors='coerce')  # 将非数字转换为 NaN
-                company_info.at[col, 'Value'] = f"{company_info.at[col, 'Value']:.2%}" if pd.notna(company_info.at[col, 'Value']) else None
-        #千分位表示
-        company_info['Value'] = company_info['Value'].apply(lambda x: "{:,.0f}".format(x) if isinstance(x, (int, float)) and x >= 1000 else x)
-        st.subheader(f"{symbol}-基本資訊")
-        st.table(company_info)
-        st.subheader(f"{symbol}-位置資訊")
-        display_location(tpex_info)
-    else:
-        st.error(f"無法獲取{symbol}-基本訊息or{symbol}為上市公司")
-
-#財報-年度
-@st.cache_data
-def financial_statements_twse(symbol):
-    try:
-        symbol = symbol + ".tw"  # 在股票代碼後加上.tw
-        stock_info = yf.Ticker(symbol)
-        balance_sheet_twse = stock_info.balance_sheet
-        income_statement_twse = stock_info.income_stmt
-        cash_flow_twse = stock_info.cashflow
-        return balance_sheet_twse, income_statement_twse, cash_flow_twse
-    except Exception as e:
-        st.error(f"獲取{symbol}-財報發生錯誤or{symbol}為上櫃興櫃公司：{str(e)}")
-        return None, None, None
-    
-@st.cache_data
-def financial_statements_tpex(symbol):
-    try:
-        symbol = symbol + ".two"  # 在股票代碼後加上.tw
-        stock_info = yf.Ticker(symbol)
-        balance_sheet_tpex = stock_info.balance_sheet
-        income_statement_tpex = stock_info.income_stmt
-        cash_flow_tpex = stock_info.cashflow
-        return balance_sheet_tpex, income_statement_tpex, cash_flow_tpex
-    except Exception as e:
-        st.error(f"獲取{symbol}-財報發生錯誤or{symbol}為上市公司：{str(e)}")
-        return None, None, None
-
-@st.cache_data
-def balance_twse(balance_sheet_twse):
-    if balance_sheet_twse is not None:
-        st.subheader(f"{symbol}-資產負債表(年度)")
-        st.write(balance_sheet_twse)
-
-@st.cache_data
-def balance_tpex(balance_sheet_tpex):
-    if balance_sheet_tpex is not None:
-        st.subheader(f"{symbol}-資產負債表(年度)")
-        st.write(balance_sheet_tpex)
-
-@st.cache_data
-def income_twse(income_statement_twse):
-    if income_statement_twse is not None:
-        st.subheader(f"{symbol}-綜合損益表(年度)")
-        st.write(income_statement_twse)
-
-@st.cache_data
-def income_tpex(income_statement_tpex):
-    if income_statement_tpex is not None:
-        st.subheader(f"{symbol}-綜合損益表(年度)")
-        st.write(income_statement_tpex)
-
-@st.cache_data
-def cashflow_twse(cash_flow_twse):
-    if cash_flow_twse is not None:
-        st.subheader(f"{symbol}-現金流量表(年度)")
-        st.write(cash_flow_twse)
-
-@st.cache_data
-def cashflow_tpex(cash_flow_tpex):
-    if cash_flow_tpex is not None:
-        st.subheader(f"{symbol}-現金流量表(年度)")
-        st.write(cash_flow_tpex)
-
-#財報-季度
-@st.cache_data
-def financial_statements_quarterly_twse(symbol):
-    try:
-        symbol = symbol + ".tw"  # 在股票代碼後加上.tw
-        stock_info = yf.Ticker(symbol)
-        balance_sheet_quarterly_twse = stock_info.quarterly_balance_sheet
-        income_statement_quarterly_twse = stock_info.quarterly_income_stmt
-        cash_flow_quarterly_twse = stock_info.quarterly_cashflow  # 這裡修正了錯誤
-        return balance_sheet_quarterly_twse, income_statement_quarterly_twse, cash_flow_quarterly_twse
-    except Exception as e:
-        st.error(f"獲取{symbol}-財報發生錯誤or{symbol}為上櫃興櫃公司：{str(e)}")
-        return None, None, None
-    
-@st.cache_data
-def financial_statements_quarterly_tpex(symbol):
-    try:
-        symbol = symbol + ".two"  # 在股票代碼後加上.tw
-        stock_info = yf.Ticker(symbol)
-        balance_sheet_quarterly_tpex = stock_info.quarterly_balance_sheet
-        income_statement_quarterly_tpex = stock_info.quarterly_income_stmt
-        cash_flow_quarterly_tpex = stock_info.quarterly_cashflow  # 這裡修正了錯誤
-        return balance_sheet_quarterly_tpex, income_statement_quarterly_tpex, cash_flow_quarterly_tpex
-    except Exception as e:
-        st.error(f"獲取{symbol}-財報發生錯誤or{symbol}為上市公司：{str(e)}")
-        return None, None, None
-
-@st.cache_data
-def balance_quarterly_twse(balance_sheet_quarterly_twse):
-    if balance_sheet_quarterly_twse is not None:
-        st.subheader(f"{symbol}-資產負債表(季度)")
-        st.write(balance_sheet_quarterly_twse)
-
-@st.cache_data
-def balance_quarterly_tpex(balance_sheet_quarterly_tpex):
-    if balance_sheet_quarterly_tpex is not None:
-        st.subheader(f"{symbol}-資產負債表(季度)")
-        st.write(balance_sheet_quarterly_tpex)
-
-@st.cache_data
-def income_quarterly_twse(income_statement_quarterly_twse):
-    if income_statement_quarterly_twse is not None:
-        st.subheader(f"{symbol}-綜合損益表(季度)")
-        st.write(income_statement_quarterly_twse)
-
-@st.cache_data
-def income_quarterly_tpex(income_statement_quarterly_tpex):
-    if income_statement_quarterly_tpex is not None:
-        st.subheader(f"{symbol}-綜合損益表(季度)")
-        st.write(income_statement_quarterly_tpex)
-
-@st.cache_data
-def cashflow_quarterly_twse(cash_flow_quarterly_twse):
-    if cash_flow_quarterly_twse is not None:
-        st.subheader(f"{symbol}-現金流量表(季度)")
-        st.write(cash_flow_quarterly_twse)
-
-@st.cache_data
-def cashflow_quarterly_tpex(cash_flow_quarterly_tpex):
-    if cash_flow_quarterly_tpex is not None:
-        st.subheader(f"{symbol}-現金流量表(季度)")
-        st.write(cash_flow_quarterly_tpex)
-
-#月營收表
-@st.cache_data
-def twse_month(symbol):
-    try:
-        # 發送請求並讀取 JSON 資料
-        url = res.get('https://openapi.twse.com.tw/v1/opendata/t187ap05_L')
-        data = url.json()
-        # 將 JSON 資料轉換成 DataFrame
-        df = pd.DataFrame(data)
-        # 使用者輸入股票代號
-        symbol = symbol
-        # 尋找符合股票代號的資料
-        twse = df.loc[df['公司代號'] == symbol]
-        # 列印結果
-        if not twse.empty:
-            st.subheader(f'{symbol}月營收表')
-            st.write(twse)            
-            # 提取所需數據
-            columns = ['營業收入-當月營收', '營業收入-上月營收', '營業收入-去年當月營收', '累計營業收入-當月累計營收', '累計營業收入-去年累計營收']
-            data = twse[columns].squeeze()  # 將 DataFrame 轉換為 Series            
-            # 繪製長條圖
-            fig = go.Figure(data=[go.Bar(x=data.index, y=data.values)])
-            fig.update_layout(title=f'{symbol} 營業收入', xaxis_title='項目', yaxis_title='金額')
-            st.subheader(f'{symbol}月營收圖表')
-            st.plotly_chart(fig)           
-        else:
-            st.error(f"找不到{symbol}月營收表or{symbol}為上櫃興櫃公司")
-    except Exception as e:
-        st.error(f"獲取{symbol}月營收表時發生錯誤：{str(e)}")
-
-@st.cache_data
-def tpex_month(symbol):
-    try:
-        # 發送請求並讀取 JSON 資料
-        url = res.get('https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O')
-        data = url.json()
-        # 將 JSON 資料轉換成 DataFrame
-        df = pd.DataFrame(data)
-        # 使用者輸入股票代號
-        symbol = symbol
-        # 尋找符合股票代號的資料
-        twse = df.loc[df['公司代號'] == symbol]
-        # 列印結果
-        if not twse.empty:
-            st.subheader(f'{symbol}月營收表')
-            st.write(twse)            
-            # 提取所需數據
-            columns = ['營業收入-當月營收', '營業收入-上月營收', '營業收入-去年當月營收', '累計營業收入-當月累計營收', '累計營業收入-去年累計營收']
-            data = twse[columns].squeeze()  # 將 DataFrame 轉換為 Series            
-            # 繪製長條圖
-            fig = go.Figure(data=[go.Bar(x=data.index, y=data.values)])
-            fig.update_layout(title=f'{symbol} 營業收入', xaxis_title='項目', yaxis_title='金額')
-            st.subheader(f'{symbol}月營收圖表')
-            st.plotly_chart(fig)           
-        else:
-            st.error(f"找不到{symbol}月營收表or{symbol}為上市公司")
-    except Exception as e:
-        st.error(f"獲取{symbol}月營收表時發生錯誤：{str(e)}")
-
-#獲取歷史交易數據
-@st.cache_data
-def twse_data(symbol,start_date,end_date):
-    try:
-        symbol = symbol + ".tw"
-        twse_data = yf.download(symbol,start=start_date,end=end_date)
-        st.subheader('交易數據')
-        with st.expander("展開數據"):
-            st.write(twse_data)
-        return twse_data
-    except Exception as e:
-        st.error(f"無法獲取{symbol}-交易數據：{str(e)}")
-        return None
-
-#繪製k線圖
-@st.cache_data
-def twse_candle(twse_data, mav_days):
-    # 移動平均線
-    mav5 = twse_data['Adj Close'].rolling(window=5).mean()  # 5日mav
-    mav20 = twse_data['Adj Close'].rolling(window=20).mean()  # 15日mav
-    mav = twse_data['Adj Close'].rolling(window=mav_days).mean()  # mav_days日mav
-    # MACD
-    macd = MACD(close=twse_data['Adj Close'], 
-                window_slow=26,
-                window_fast=12, 
-                window_sign=9)
-    # stochastic
-    stoch = StochasticOscillator(high=twse_data['High'],
-                                 close=twse_data['Adj Close'],
-                                 low=twse_data['Low'],
-                                 window=14,
-                                 smooth_window=3) 
-    # RSI
-    rsi = RSIIndicator(close=twse_data['Adj Close'], window=14) 
-    fig = go.Figure()
-    # add subplot properties when initializing fig variable
-    fig = plotly.subplots.make_subplots(rows=5, cols=1, shared_xaxes=True,
-                                        vertical_spacing=0.01, 
-                                        row_heights=[0.5,0.2,0.2,0.2,0.2])
-    # K线图
-    fig.add_trace(go.Candlestick(x=twse_data.index,
-                                 open=twse_data['Open'],
-                                 high=twse_data['High'],
-                                 low=twse_data['Low'],
-                                 close=twse_data['Adj Close'],
-                                 increasing_line_color= 'red', 
-                                 decreasing_line_color= 'green'
-                                 ))
-    fig.add_trace(go.Scatter(x=twse_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'))
-    fig.add_trace(go.Scatter(x=twse_data.index, y=mav20, opacity=0.7,line=dict(color='orange', width=2), name='MAV-20'))
-    fig.add_trace(go.Scatter(x=twse_data.index, y=mav,  opacity=0.7, line=dict(color='purple', width=2),name=f'MAV-{mav_days}'))
-    # Plot volume trace on 2nd row
-    colors = ['green' if row['Open'] - row['Adj Close'] >= 0 
-          else 'red' for index, row in twse_data.iterrows()]
-    fig.add_trace(go.Bar(x=twse_data.index, 
-                     y=twse_data['Volume'],
-                     marker_color=colors
-                    ), row=2, col=1)
-    # Plot MACD trace on 3rd row
-    colorsM = ['green' if val >= 0 
-          else 'red' for val in macd.macd_diff()]
-    fig.add_trace(go.Bar(x=twse_data.index, 
-                     y=macd.macd_diff(),
-                     marker_color=colorsM
-                    ), row=3, col=1)
-    fig.add_trace(go.Scatter(x=twse_data.index,
-                         y=macd.macd(),
-                         line=dict(color='orange', width=2)
-                        ), row=3, col=1)
-    fig.add_trace(go.Scatter(x=twse_data.index,
-                         y=macd.macd_signal(),
-                         line=dict(color='blue', width=1)
-                        ), row=3, col=1)
-    # Plot stochastics trace on 4th row
-    fig.add_trace(go.Scatter(x=twse_data.index,
-                         y=stoch.stoch(),
-                         line=dict(color='orange', width=2)
-                        ), row=4, col=1)
-    fig.add_trace(go.Scatter(x=twse_data.index,
-                         y=stoch.stoch_signal(),
-                         line=dict(color='blue', width=1)
-                        ), row=4, col=1)
-    # Plot RSI trace on 5th row
-    fig.add_trace(go.Scatter(x=twse_data.index,
-                         y=rsi.rsi(),
-                         line=dict(color='purple', width=2)
-                        ), row=5, col=1)
-    fig.add_trace(go.Scatter(x=twse_data.index,
-                         y=[70]*len(twse_data.index),
-                         line=dict(color='red', width=1),
-                         name='Overbought'
-                        ), row=5, col=1)
-    fig.add_trace(go.Scatter(x=twse_data.index,
-                         y=[30]*len(twse_data.index),
-                         line=dict(color='green', width=1),
-                         name='Oversold'
-                        ), row=5, col=1)
-    # update layout by changing the plot size, hiding legends & rangeslider, and removing gaps between dates
-    fig.update_layout(height=900, width=1200,
-                      showlegend=False,
-                      xaxis_rangeslider_visible=False)
-    # 更新圖表佈局
-    fig.update_yaxes(title_text="Price", row=1, col=1)
-    fig.update_yaxes(title_text="Volume", row=2, col=1)
-    fig.update_yaxes(title_text="MACD", showgrid=False, row=3, col=1)
-    fig.update_yaxes(title_text="KD", row=4, col=1)
-    fig.update_yaxes(title_text="RSI", showgrid=False, row=5, col=1)           
-    fig.update_xaxes(rangeslider_visible=False,rangeselector_visible=False)
-    st.subheader(f'{symbol}-技術分析圖')
-    st.plotly_chart(fig, use_container_width=True)
-
-#繪製趨勢圖
-@st.cache_data
-def twse_trend(twse_data):
-    fig = go.Figure()
-    # 收盤價線
-    fig.add_trace(go.Scatter(x=twse_data.index, y=twse_data['Adj Close'], mode='lines', name='調整後收盤價'))
-    # 開盤價線
-    fig.add_trace(go.Scatter(x=twse_data.index, y=twse_data['Open'], mode='lines', name='開盤價'))
-    # 更新佈局
-    fig.update_layout(xaxis_title='日期', yaxis_title='')
-    # 顯示圖表
-    st.subheader(f'{symbol}-趨勢圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-#股票比較
-@st.cache_data
-def twse_data_vs(symbols,start_date,end_date):
-    try:
-        twse_data = yf.download(symbols, start=start_date, end=end_date)
-        twse_data = twse_data.drop(['Open','High','Low','Close'], axis=1)
-        st.subheader('交易數據')
-        with st.expander("展開數據"):
-            st.write(twse_data)
-        return twse_data
-    except Exception as e:
-        st.error(f"無法獲取交易數據: {str(e)}")
-        return None
-
-@st.cache_data
-def twse_trend_vs(twse_data,symbols):
-    fig = go.Figure()
-    for symbol in symbols:
-        if symbol in twse_data.columns.get_level_values(1):
-            df = twse_data.xs(symbol, level=1, axis=1)
-            df['Adj Close Log'] = np.log(df['Adj Close'])  # 對 Adj Close 進行對數轉換
-            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close Log'], mode='lines', name=symbol))
-    fig.update_layout(xaxis_title='日期', yaxis_title='價格')
-    st.subheader('趨勢比較圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-@st.cache_data
-def twse_volume_chart(twse_data,symbols):
-    fig = go.Figure()
-    for symbol in symbols:
-        if symbol in twse_data.columns.get_level_values(1):
-            df = twse_data.xs(symbol, level=1, axis=1)
-            fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name=symbol))
-    fig.update_layout(xaxis_title='日期', yaxis_title='交易量')
-    st.subheader('交易量比較圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-#獲取歷史交易數據
-@st.cache_data
-def tpex_data(symbol,start_date,end_date):
-    try:
-        symbol = symbol + ".two"
-        tpex_data = yf.download(symbol,start=start_date,end=end_date)
-        st.subheader('交易數據')
-        with st.expander("展開數據"):
-            st.write(tpex_data)
-        return tpex_data
-    except Exception as e:
-        st.error(f"無法獲取{symbol}-交易數據：{str(e)}")
-        return None
-
-#繪製k線圖
-@st.cache_data
-def tpex_candle(tpex_data, mav_days):
-    # 移動平均線
-    mav5 = tpex_data['Adj Close'].rolling(window=5).mean()  # 5日mav
-    mav20 = tpex_data['Adj Close'].rolling(window=20).mean()  # 15日mav
-    mav = tpex_data['Adj Close'].rolling(window=mav_days).mean()  # mav_days日mav
-    # MACD
-    macd = MACD(close=tpex_data['Adj Close'], 
-                window_slow=26,
-                window_fast=12, 
-                window_sign=9)
-    # stochastic
-    stoch = StochasticOscillator(high=tpex_data['High'],
-                                 close=tpex_data['Adj Close'],
-                                 low=tpex_data['Low'],
-                                 window=14,
-                                 smooth_window=3) 
-    # RSI
-    rsi = RSIIndicator(close=tpex_data['Adj Close'], window=14) 
-    fig = go.Figure()
-    # add subplot properties when initializing fig variable
-    fig = plotly.subplots.make_subplots(rows=5, cols=1, shared_xaxes=True,
-                                        vertical_spacing=0.01, 
-                                        row_heights=[0.5,0.2,0.2,0.2,0.2])
-    # K线图
-    fig.add_trace(go.Candlestick(x=tpex_data.index,
-                                 open=tpex_data['Open'],
-                                 high=tpex_data['High'],
-                                 low=tpex_data['Low'],
-                                 close=tpex_data['Adj Close'],
-                                 increasing_line_color= 'red', 
-                                 decreasing_line_color= 'green',
-                                 ))
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'))
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav20, opacity=0.7,line=dict(color='orange', width=2), name='MAV-20'))
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=mav,  opacity=0.7, line=dict(color='purple', width=2),name=f'MAV-{mav_days}'))
-    # Plot volume trace on 2nd row
-    colors = ['green' if row['Open'] - row['Adj Close'] >= 0 
-          else 'red' for index, row in tpex_data.iterrows()]
-    fig.add_trace(go.Bar(x=tpex_data.index, 
-                     y=tpex_data['Volume'],
-                     marker_color=colors
-                    ), row=2, col=1)
-    # Plot MACD trace on 3rd row
-    colorsM = ['green' if val >= 0 
-          else 'red' for val in macd.macd_diff()]
-    fig.add_trace(go.Bar(x=tpex_data.index, 
-                     y=macd.macd_diff(),
-                     marker_color=colorsM
-                    ), row=3, col=1)
-    fig.add_trace(go.Scatter(x=tpex_data.index,
-                         y=macd.macd(),
-                         line=dict(color='orange', width=2)
-                        ), row=3, col=1)
-    fig.add_trace(go.Scatter(x=tpex_data.index,
-                         y=macd.macd_signal(),
-                         line=dict(color='blue', width=1)
-                        ), row=3, col=1)
-    # Plot stochastics trace on 4th row
-    fig.add_trace(go.Scatter(x=tpex_data.index,
-                         y=stoch.stoch(),
-                         line=dict(color='orange', width=2)
-                        ), row=4, col=1)
-    fig.add_trace(go.Scatter(x=tpex_data.index,
-                         y=stoch.stoch_signal(),
-                         line=dict(color='blue', width=1)
-                        ), row=4, col=1)
-    # Plot RSI trace on 5th row
-    fig.add_trace(go.Scatter(x=tpex_data.index,
-                         y=rsi.rsi(),
-                         line=dict(color='purple', width=2)
-                        ), row=5, col=1)
-    fig.add_trace(go.Scatter(x=tpex_data.index,
-                         y=[70]*len(tpex_data.index),
-                         line=dict(color='red', width=1),
-                         name='Overbought'
-                        ), row=5, col=1)
-    fig.add_trace(go.Scatter(x=tpex_data.index,
-                         y=[30]*len(tpex_data.index),
-                         line=dict(color='green', width=1),
-                         name='Oversold'
-                        ), row=5, col=1)
-    # update layout by changing the plot size, hiding legends & rangeslider, and removing gaps between dates
-    fig.update_layout(height=900, width=1200,
-                      showlegend=False,
-                      xaxis_rangeslider_visible=False)
-    # 更新圖表佈局
-    fig.update_yaxes(title_text="Price", row=1, col=1)
-    fig.update_yaxes(title_text="Volume", row=2, col=1)
-    fig.update_yaxes(title_text="MACD", showgrid=False, row=3, col=1)
-    fig.update_yaxes(title_text="KD", row=4, col=1)
-    fig.update_yaxes(title_text="RSI", showgrid=False, row=5, col=1)           
-    fig.update_xaxes(rangeslider_visible=False,rangeselector_visible=False)
-    st.subheader(f'{symbol}-技術分析圖')
-    st.plotly_chart(fig, use_container_width=True)
-
-#繪製趨勢圖
-@st.cache_data
-def tpex_trend(tpex_data):
-    fig = go.Figure()
-    # 收盤價線
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=tpex_data['Adj Close'], mode='lines', name='調整後收盤價'))
-    # 開盤價線
-    fig.add_trace(go.Scatter(x=tpex_data.index, y=tpex_data['Open'], mode='lines', name='開盤價'))
-    # 更新佈局
-    fig.update_layout(xaxis_title='日期', yaxis_title='')
-    # 顯示圖表
-    st.subheader(f'{symbol}-趨勢圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-#股票比較
-@st.cache_data
-def tpex_data_vs(symbols, start_date, end_date):
-    try:
-        tpex_data = yf.download(symbols, start=start_date, end=end_date)
-        tpex_data = tpex_data.drop(['Open','High','Low','Close'], axis=1)
-        st.subheader('交易數據')
-        with st.expander("展開數據"):
-            st.write(tpex_data)
-        return tpex_data
-    except Exception as e:
-        st.error(f"無法獲取交易數據: {str(e)}")
-        return None
-
-@st.cache_data
-def tpex_trend_vs(tpex_data,symbols):
-    fig = go.Figure()
-    for symbol in symbols:
-        if symbol in tpex_data.columns.get_level_values(1):
-            df = tpex_data.xs(symbol, level=1, axis=1)
-            df['Adj Close Log'] = np.log(df['Adj Close'])  # 對 Adj Close 進行對數轉換
-            fig.add_trace(go.Scatter(x=df.index, y=df['Adj Close Log'], mode='lines', name=symbol))
-    fig.update_layout(xaxis_title='日期', yaxis_title='價格')
-    st.subheader('趨勢比較圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-@st.cache_data
-def tpex_volume_chart(tpex_data,symbols):
-    fig = go.Figure()
-    for symbol in symbols:
-        if symbol in tpex_data.columns.get_level_values(1):
-            df = tpex_data.xs(symbol, level=1, axis=1)
-            fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name=symbol))
-    fig.update_layout(xaxis_title='日期', yaxis_title='交易量')
-    st.subheader('交易量比較圖')
-    fig.layout.update(xaxis_rangeslider_visible=True)
-    st.plotly_chart(fig, use_container_width=True)
+# 计算价格差异的函数
+def calculate_twse_difference(stock_data,period_days):
+    latest_price = stock_data.iloc[-1]["close"]  # 获取最新的收盘价
+    previous_price = stock_data.iloc[-period_days]["close"] if len(stock_data) > period_days else stock_data.iloc[0]["close"]  # 获取特定天数前的收盘价
+    price_difference = latest_price - previous_price  # 计算价格差异
+    percentage_difference = (price_difference / previous_price) * 100  # 计算百分比变化
+    return price_difference, percentage_difference  # 返回价格差异和百分比变化
 
 #streamlit版面配置
-st.markdown("<h1 style='text-align: center; color: rainbow;'>StockInfo</h1>", unsafe_allow_html=True)
-st.header(' ',divider="rainbow")
+def app():
+    st.set_page_config(page_title="StockInfo", layout="wide", page_icon="📈")
+    hide_menu_style = "<style> footer {visibility: hidden;} </style>"
+    st.markdown(hide_menu_style, unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: rainbow;'>📈 StockInfo</h1>", unsafe_allow_html=True)
+    st.header(' ',divider="rainbow")
+    st.sidebar.title('📈 Menu')
+    market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
+    options = st.sidebar.selectbox('選擇功能', ['大盤指數','交易數據','近期相關消息'])
+    st.sidebar.markdown('''
+    免責聲明：        
+    1. K 線圖觀看角度      
+            - 美股: 綠漲、紅跌        
+            - 台股: 綠跌、紅漲           
+    2. 本平台僅適用於數據搜尋，不建議任何投資行為
+    3. 有些數據僅限美股，台股尚未支援  
+    4. 排版問題建議使用電腦查詢數據  
+    ''')
 
-st.sidebar.title('Menu')
-market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
-options = st.sidebar.selectbox('選擇功能', ['大盤指數','公司基本資訊','公司財報查詢','交易數據','內部資訊','機構買賣','近期相關消息'])
-st.sidebar.markdown('''
-免責聲明：        
-1. K 線圖觀看角度      
-        - 美股: 綠漲、紅跌        
-        - 台股: 綠跌、紅漲           
-2. 本平台僅適用於數據搜尋，不建議任何投資行為
-3. 有些數據僅限美股，台股尚未支援  
-4. 排版問題建議使用電腦查詢數據  
-''')
-
-if market == '美國' and options == '大盤指數':
-    period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
-    if period == '年初至今':
-        period = 'ytd'
-        time = '年初至今'
-        plot_index(period,time)
-        plot_pct(period,time)
-        plot_foreign(period,time)
-        plot_pct_foreign(period,time)
-    elif period == '1年':
-        period = '1y'
-        time = '1年'
-        plot_index(period,time)
-        plot_pct(period,time)
-        plot_foreign(period,time)
-        plot_pct_foreign(period,time)
-    elif period == '3年':
-        period = '3y'
-        time = '3年'
-        plot_index(period,time)
-        plot_pct(period,time)
-        plot_foreign(period,time)
-        plot_pct_foreign(period,time)
-    elif period == '5年':
-        period = '5y'
-        time = '5年'
-        plot_index(period,time)
-        plot_pct(period,time)
-        plot_foreign(period,time)
-        plot_pct_foreign(period,time)
-    elif period == '10年':
-        period = '10y'
-        time = '10年'
-        plot_index(period,time)
-        plot_pct(period,time)
-        plot_foreign(period,time)
-        plot_pct_foreign(period,time)
-    elif period == '全部':
-        period = 'max'
-        time = '全部'
-        plot_index(period,time)
-        plot_pct(period,time)
-        plot_foreign(period,time)
-        plot_pct_foreign(period,time)
-    with st.expander("顯示成份股"):
-        st.write('S&P500成份股')
-        sp500_dsymbol()
-        st.write('NASDAQ100成份股')
-        nasdaq_100symbol()
-        st.write('道瓊工業成份股')
-        dji_symbol()
-    st.markdown("[美股指數名詞解釋](https://www.oanda.com/bvi-ft/lab-education/indices/us-4index/)")
-
-elif market == '美國' and options == '公司基本資訊':
-    symbol = st.text_input('輸入美股代號').upper()
-    if st.button('查詢'):
-        com_info = company_info(symbol)
-        display_info(com_info)
-
-elif market == '美國' and options == '公司財報查詢':
-    select = st.selectbox('選擇查詢資訊',['年報','季報'])
-    if select == '年報':
+    if market == '美國' and options == '大盤指數':
+        period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
+        if period == '年初至今':
+            period = 'ytd'
+            time = '年初至今'
+            plot_index(period,time)
+            plot_pct(period,time)
+            plot_foreign(period,time)
+            plot_pct_foreign(period,time)
+        elif period == '1年':
+            period = '1y'
+            time = '1年'
+            plot_index(period,time)
+            plot_pct(period,time)
+            plot_foreign(period,time)
+            plot_pct_foreign(period,time)
+        elif period == '3年':
+            period = '3y'
+            time = '3年'
+            plot_index(period,time)
+            plot_pct(period,time)
+            plot_foreign(period,time)
+            plot_pct_foreign(period,time)
+        elif period == '5年':
+            period = '5y'
+            time = '5年'
+            plot_index(period,time)
+            plot_pct(period,time)
+            plot_foreign(period,time)
+            plot_pct_foreign(period,time)
+        elif period == '10年':
+            period = '10y'
+            time = '10年'
+            plot_index(period,time)
+            plot_pct(period,time)
+            plot_foreign(period,time)
+            plot_pct_foreign(period,time)
+        elif period == '全部':
+            period = 'max'
+            time = '全部'
+            plot_index(period,time)
+            plot_pct(period,time)
+            plot_foreign(period,time)
+            plot_pct_foreign(period,time)
+        with st.expander("顯示成份股"):
+            st.write('S&P500成份股')
+            sp500_dsymbol()
+            st.write('NASDAQ100成份股')
+            nasdaq_100symbol()
+            st.write('道瓊工業成份股')
+            dji_symbol()
+        st.markdown("[美股指數名詞解釋](https://www.oanda.com/bvi-ft/lab-education/indices/us-4index/)")
+    elif market == '美國' and options == '交易數據':
+        with st.expander("展開輸入參數"):
+            range = st.selectbox('長期/短期', ['長期', '短期'])
+            if range == '長期':
+                symbol = st.text_input("輸入美股代碼").upper()
+                time_range = st.selectbox('選擇時長', ['1年', '3年', '5年', '10年', '全部'])
+                if time_range == '1年':
+                    period = '1y'
+                    period_days = 252
+                elif time_range == '3年':
+                    period = '3y'
+                    period_days = 252 * 3
+                elif time_range == '5年':
+                    period = '5y'
+                    period_days = 252 * 5
+                elif time_range == '10年':
+                    period = '10y'
+                    period_days = 252 * 10
+                elif time_range == '全部':
+                    period = 'max'
+                    period_days = None  # 使用全部数据的长度
+            elif range == '短期':
+                symbol = st.text_input("輸入美股代碼").upper()
+                time_range = st.selectbox('選擇時長',['1個月','2個月','3個月','6個月'])
+                if time_range == '1個月':
+                    period = '1mo'
+                    period_days = 21  # 一个月大约是21个交易日
+                elif time_range == '2個月':
+                    period = '2mo'
+                    period_days = 42
+                elif time_range == '3個月':
+                    period = '3mo'
+                    period_days = 63  # 三个月大约是63个交易日
+                elif time_range == '6個月':
+                    period = '6mo'
+                    period_days = 126  # 六个月大约是126个交易日
+        if st.button("查詢"):
+            if symbol:
+                # 获取股票数据
+                stock_data = get_stock_data(symbol, period)
+                st.header(f"{symbol}-{time_range}交易數據")
+                if stock_data is not None and not stock_data.empty:
+                    if period_days is None:
+                        period_days = len(stock_data)  # 更新 period_days 为 stock_data 的长度
+                    price_difference, percentage_difference = calculate_price_difference(stock_data, period_days)
+                    latest_close_price = stock_data.iloc[-1]["Adj Close"]
+                    highest_price = stock_data["High"].max()
+                    lowest_price = stock_data["Low"].min()
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("最新收盤價", f"${latest_close_price:.2f}")
+                    with col2:
+                        st.metric(f"{time_range}增長率", f"${price_difference:.2f}", f"{percentage_difference:+.2f}%")
+                    with col3:
+                        st.metric(f"{time_range}最高價", f"${highest_price:.2f}")
+                    with col4:
+                        st.metric(f"{time_range}最低價", f"${lowest_price:.2f}")
+                    st.subheader(f"{symbol}-{time_range}K線圖表")
+                    fig = go.Figure()
+                    fig = plotly.subplots.make_subplots(rows=4, cols=1,shared_xaxes=True,vertical_spacing=0.01,row_heights=[0.8,0.5,0.5,0.5])
+                    mav5 = stock_data['Adj Close'].rolling(window=5).mean()  # 5日mav
+                    mav20 = stock_data['Adj Close'].rolling(window=20).mean()  # 20日mav
+                    mav60 = stock_data['Adj Close'].rolling(window=60).mean()  # 60日mav
+                    rsi = RSIIndicator(close=stock_data['Adj Close'], window=14)
+                    macd = MACD(close=stock_data['Adj Close'],window_slow=26,window_fast=12, window_sign=9)
+                    fig.add_trace(go.Candlestick(x=stock_data.index,open=stock_data['Open'],high=stock_data['High'],low=stock_data['Low'],close=stock_data['Adj Close'],),row=1,col=1)
+                    fig.update_layout(xaxis_rangeslider_visible=False)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=mav20, opacity=0.7,line=dict(color='orange', width=2), name='MAV-20'), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=mav60,  opacity=0.7, line=dict(color='purple', width=2),name='MAV-60'), row=1, col=1)
+                    # Plot volume trace on 2nd row
+                    colors = ['green' if row['Open'] - row['Adj Close'] >= 0 else 'red' for index, row in stock_data.iterrows()]
+                    fig.add_trace(go.Bar(x=stock_data.index,y=stock_data['Volume'],marker_color=colors,name='Volume'),row=2, col=1)
+                    # Plot RSI trace on 5th row
+                    fig.add_trace(go.Scatter(x=stock_data.index,y=rsi.rsi(),line=dict(color='purple',width=2)),row=3,col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index,y=[70]*len(stock_data.index),line=dict(color='red', width=1),name='Overbought'), row=3, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index,y=[30]*len(stock_data.index),line=dict(color='green', width=1),name='Oversold'), row=3, col=1)
+                     # Plot MACD trace on 3rd row
+                    colorsM = ['green' if val >= 0 else 'red' for val in macd.macd_diff()]
+                    fig.add_trace(go.Bar(x=stock_data.index,y=macd.macd_diff(),marker_color=colorsM),row=4,col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index,y=macd.macd(),line=dict(color='orange', width=2)),row=4,col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index,y=macd.macd_signal(),line=dict(color='blue', width=1)),row=4,col=1)
+                    fig.update_yaxes(title_text="Price", row=1, col=1)
+                    fig.update_yaxes(title_text="Volume", row=2, col=1)
+                    fig.update_yaxes(title_text="RSI", row=3, col=1)
+                    fig.update_yaxes(title_text="MACD", row=4, col=1)
+                    st.plotly_chart(fig,use_container_width=True)
+                else:
+                    st.error(f'查無{symbol}數據')
+                with st.expander(f'展開{symbol}-{time_range}數據'):
+                    st.dataframe(stock_data)
+                    st.download_button(f"下載{symbol}-{time_range}數據", stock_data.to_csv(index=True), file_name=f"{symbol}-{time_range}.csv", mime="text/csv")
+    elif market == '美國' and options == '近期相關消息':
+        st.subheader('近期相關新聞')
         symbol = st.text_input('輸入美股代號').upper()
         if st.button('查詢'):
-            balance_sheet, income_statement, cash_flow = financial_statements(symbol)
-            if balance_sheet is not None:
-                balance(balance_sheet)
-            if income_statement is not None:
-                income(income_statement)
-            if cash_flow is not None:
-                cashflow(cash_flow)
-            else:
-                st.error(f"無法獲取{symbol}-年報")
-    elif select == '季報':
-        symbol = st.text_input('輸入美股代號').upper()
-        if st.button('查詢'):
-            balance_sheet_quarterly, income_statement_quarterly, cash_flow_quarterly = financial_statements_quarterly(symbol)
-            if balance_sheet_quarterly is not None:
-                balance_quarterly(balance_sheet_quarterly)
-            if income_statement_quarterly is not None:
-                income_quarterly(income_statement_quarterly)
-            if cash_flow_quarterly is not None:
-                cashflow_quarterly(cash_flow_quarterly)
-            else:
-                st.error(f"無法獲取{symbol}-季報")
-
-elif market == '美國' and options == '交易數據':
-    select = st.selectbox('選擇查詢資訊',['個股','多股'])
-    if select == '個股':
+            display_news_table(symbol)
+            display_news_links(symbol)
+    elif market == '台灣' and options == '大盤指數':
+        period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
+        if period == '年初至今':
+            time = '年初至今'
+            period = 'ytd'
+            plot_index_tw(period,time)
+            plot_tw_asia(period,time)
+            plot_pct_tw(period,time)
+        elif period == '1年':
+            time = '1年'
+            period = '1y'
+            plot_index_tw(period,time)
+            plot_tw_asia(period,time)
+            plot_pct_tw(period,time)
+        elif period == '3年':
+            time = '3年'
+            period = '3y'
+            plot_index_tw(period,time)
+            plot_tw_asia(period,time)
+            plot_pct_tw(period,time)
+        elif period == '5年':
+            time = '5年'
+            period = '5y'
+            plot_index_tw(period,time)
+            plot_tw_asia(period,time)
+            plot_pct_tw(period,time)
+        elif period == '10年':
+            time = '10年'
+            period = '10y'
+            plot_index_tw(period,time)
+            plot_tw_asia(period,time)
+            plot_pct_tw(period,time)
+        elif period == '全部':
+            time = '全部'
+            period = 'max'
+            plot_index_tw(period,time)
+            plot_tw_asia(period,time)
+            plot_pct_tw(period,time)
+    elif market == '台灣' and options == '交易數據':
         with st.expander("展開輸入參數"):
-            symbol = st.text_input('輸入美股代號', key='single_stock').upper()
-            start_date = st.date_input('開始日期', key='start_date')
-            end_date = st.date_input('结束日期', key='end_date')
-            mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
-        if st.button('查詢'):
-            stock_data = stock_data(symbol, start_date, end_date)
-            if stock_data is not None:
-                plot_candle(stock_data, mav_days)  # 將MAV天數傳遞給 plot_candle 函式
-                plot_trend(stock_data)
-            else:
-                st.error(f"無法獲取{symbol}交易數據")
-    elif select == '多股':
-        with st.expander("展開輸入參數"):
-            symbol1 = st.text_input('輸入美股代號 1', key='stock1').upper()
-            symbol2 = st.text_input('輸入美股代號 2', key='stock2').upper()
-            symbol3 = st.text_input('輸入美股代號 3', key='stock3').upper()
-            start_date_multi = st.date_input('開始日期', key='start_date_multi')
-            end_date_multi = st.date_input('結束日期', key='end_date_multi')
-            # 在 expander 之外執行相關程式碼
-        if st.button('比較'):
-            symbols = [s.upper() for s in [symbol1, symbol2, symbol3] if s]
-            if symbols:
-                stock_data = stock_data_vs(symbols, start_date_multi, end_date_multi)
-                if stock_data is not None:
-                    plot_trend_vs(stock_data, symbols)
-                    plot_volume_chart(stock_data, symbols)
+            range = st.selectbox('長期/短期', ['長期', '短期'])
+            symbol = st.text_input("輸入台股代碼")
+            if range == '長期':
+                time_range = st.selectbox('選擇時長', ['1年', '3年', '5年', '10年'])
+                if time_range == '1年':
+                    time_range = 1
+                    time = '1年'
+                    period_days = 252
+                elif time_range == '3年':
+                    time_range = 3
+                    time = '3年'
+                    period_days = 252 * 3
+                elif time_range == '5年':
+                    time_range = 5
+                    time = '5年'
+                    period_days = 252 * 5
+                elif time_range == '10年':
+                    time_range = 10
+                    time = '10年'
+                    period_days = 252 * 10
+            elif range == '短期':
+                time_range = st.selectbox('選擇時長',['1個月','2個月','3個月','6個月'])
+                if time_range == '1個月':
+                    time_range = 1
+                    time = '1個月'
+                    period_days = 21
+                elif time_range == '2個月':
+                    time_range = 2
+                    time = '2個月'
+                    period_days = 42
+                elif time_range == '3個月':
+                    time_range = 3
+                    time = '3個月'
+                    period_days = 63
+                elif time_range == '6個月':
+                    time_range = 6
+                    time = '6個月'
+                    period_days = 126
+        if st.button("查詢"):
+            stock_data = None  # 初始化变量
+            if symbol:
+                if range == '長期':
+                    stock_data = get_twstock_data(symbol, time_range)
+                elif range == '短期':
+                    stock_data = get_twstock_month(symbol, time_range)
+                st.header(f"{symbol}-{time}交易數據")
+                if stock_data is not None and not stock_data.empty:
+                    if period_days is None:
+                        period_days = len(stock_data)
+                    price_difference, percentage_difference = calculate_twse_difference(stock_data,period_days)
+                    latest_close_price = stock_data.iloc[-1]["close"]
+                    highest_price = stock_data["high"].max()
+                    lowest_price = stock_data["low"].min()
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("最新收盤價", f"${latest_close_price:.2f}")
+                    with col2:
+                        st.metric(f"{time_range}增長率", f"${price_difference:.2f}", f"{percentage_difference:+.2f}%")
+                    with col3:
+                        st.metric(f"{time_range}最高價", f"${highest_price:.2f}")
+                    with col4:
+                        st.metric(f"{time_range}最低價", f"${lowest_price:.2f}")
+                    st.subheader(f"{symbol}-{time_range}K線圖表")
+                    fig = go.Figure()
+                    fig = plotly.subplots.make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.01, row_heights=[0.8, 0.5, 0.5, 0.5])
+                    mav5 = stock_data['close'].rolling(window=5).mean()
+                    mav20 = stock_data['close'].rolling(window=20).mean()
+                    mav60 = stock_data['close'].rolling(window=60).mean()
+                    rsi = RSIIndicator(close=stock_data['close'], window=14)
+                    macd = MACD(close=stock_data['close'], window_slow=26, window_fast=12, window_sign=9)
+                    fig.add_trace(go.Candlestick(x=stock_data.index, open=stock_data['open'], high=stock_data['high'],low=stock_data['low'], close=stock_data['close'],increasing_line_color= 'red', decreasing_line_color='green'), row=1, col=1)
+                    fig.update_layout(xaxis_rangeslider_visible=False)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=mav5, opacity=0.7, line=dict(color='blue', width=2), name='MAV-5'), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=mav20, opacity=0.7, line=dict(color='orange', width=2), name='MAV-20'), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=mav60, opacity=0.7, line=dict(color='purple', width=2), name='MAV-60'), row=1, col=1)
+                    colors = ['red' if row['open'] - row['close'] >= 0 else 'green' for index, row in stock_data.iterrows()]
+                    fig.add_trace(go.Bar(x=stock_data.index, y=stock_data['transaction'], marker_color=colors, name='Volume'), row=2, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=rsi.rsi(), line=dict(color='purple', width=2)), row=3, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=[70]*len(stock_data.index), line=dict(color='green', width=1), name='Overbought'), row=3, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=[30]*len(stock_data.index), line=dict(color='red', width=1), name='Oversold'), row=3, col=1)
+                    colorsM = ['red' if val >= 0 else 'green' for val in macd.macd_diff()]
+                    fig.add_trace(go.Bar(x=stock_data.index, y=macd.macd_diff(), marker_color=colorsM), row=4, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=macd.macd(), line=dict(color='orange', width=2)), row=4, col=1)
+                    fig.add_trace(go.Scatter(x=stock_data.index, y=macd.macd_signal(), line=dict(color='blue', width=1)), row=4, col=1)
+                    fig.update_yaxes(title_text="Price", row=1, col=1)
+                    fig.update_yaxes(title_text="Volume", row=2, col=1)
+                    fig.update_yaxes(title_text="RSI", row=3, col=1)
+                    fig.update_yaxes(title_text="MACD", row=4, col=1)
+                    st.plotly_chart(fig, use_container_width=True)
                 else:
-                    st.error('請輸入至少一隻美股')
+                    st.error(f'查無{symbol}數據')
+                with st.expander(f'展開{symbol}-{time}數據'):
+                    st.dataframe(stock_data)
+                    st.download_button(f"下載{symbol}-{time}數據", stock_data.to_csv(index=True), file_name=f"{symbol}-{time}.csv", mime="text/csv")
 
-elif market == '美國' and options == '內部資訊':
-    symbol = st.text_input('輸入美股代號')
-    head = int(st.number_input('輸入欲查詢資料筆數'))
-    if st.button('查詢'):
-        stock_insider_transactions(symbol,head)
-        
-elif market == '美國' and options == '機構買賣':
-    symbol = st.text_input('輸入美股代號').upper()
-    head = int(st.number_input('輸入查詢資料筆數'))
-    if st.button('查詢'):
-        stock_institutional_holders(symbol)
-        stock_upgrades_downgrades(symbol, head)
-
-elif market == '美國' and options == '近期相關消息' :
-    st.subheader('近期相關新聞')
-    symbol = st.text_input('輸入美股代號')
-    if st.button('查詢'):
-        display_news_table(symbol)
-        display_news_links(symbol)
-
-elif market == '台灣' and options == '大盤指數':
-    period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
-    if period == '年初至今':
-        time = '年初至今'
-        period = 'ytd'
-        plot_index_tw(period,time)
-        plot_tw_asia(period,time)
-        plot_pct_tw(period,time)
-    elif period == '1年':
-        time = '1年'
-        period = '1y'
-        plot_index_tw(period,time)
-        plot_tw_asia(period,time)
-        plot_pct_tw(period,time)
-    elif period == '3年':
-        time = '3年'
-        period = '3y'
-        plot_index_tw(period,time)
-        plot_tw_asia(period,time)
-        plot_pct_tw(period,time)
-    elif period == '5年':
-        time = '5年'
-        period = '5y'
-        plot_index_tw(period,time)
-        plot_tw_asia(period,time)
-        plot_pct_tw(period,time)
-    elif period == '10年':
-        time = '10年'
-        period = '10y'
-        plot_index_tw(period,time)
-        plot_tw_asia(period,time)
-        plot_pct_tw(period,time)
-    elif period == '全部':
-        time = '全部'
-        period = 'max'
-        plot_index_tw(period,time)
-        plot_tw_asia(period,time)
-        plot_pct_tw(period,time)
-    with st.expander("顯示成份股"):
-        st.write('新加坡海峽時報指數成份股')
-        sti_symbol()
-        st.write('恒生指數成份股')
-        hsi_symbol()
-        st.write('日經指數成份股')
-        n225_symbol()
-        st.write('深證指數成份股')
-        shz_symbol()
-
-elif market == '台灣' and options == '公司基本資訊' :
-    select = st.selectbox('選擇市場',['上市','櫃檯'])
-    if select == '上市':
-        symbol = st.text_input('輸入台股上市代號')
-        if st.button('查詢'):
-            twse_info = twse_info(symbol)
-            display_info(twse_info)
-    elif select == '櫃檯':
-        symbol = st.text_input('輸入台股櫃檯代號')
-        if st.button('查詢'):
-            tpex_info = tpex_info(symbol)
-            display_info(tpex_info)
-
-elif market == '台灣' and options == '公司財報查詢':
-    select = st.selectbox('選擇市場',['上市','櫃檯'])
-    select2 = st.selectbox('選擇查詢資訊',['年報','季報','月營收'])
-    if select == '上市' and select2 == '年報':
-        symbol = st.text_input('輸入台股上市代號')
-        if st.button('查詢'):
-            balance_sheet_twse, income_statement_twse, cash_flow_twse = financial_statements_twse(symbol)
-            if balance_sheet_twse is not None:
-                balance_twse(balance_sheet_twse)
-            if income_statement_twse is not None:
-                income_twse(income_statement_twse)
-            if cash_flow_twse is not None:
-                cashflow_twse(cash_flow_twse)
-            else:
-                st.error(f"無法獲取{symbol}-年報")
-    elif select == '上市' and select2 == '季報':
-        symbol = st.text_input('輸入台股上市代號')
-        if st.button('查詢'):
-            balance_sheet_quarterly_twse, income_statement_quarterly_twse, cash_flow_quarterly_twse = financial_statements_quarterly_twse(symbol)
-            if balance_sheet_quarterly_twse is not None:
-                balance_quarterly_twse(balance_sheet_quarterly_twse)
-            if income_statement_quarterly_twse is not None:
-                income_quarterly_twse(income_statement_quarterly_twse)
-            if cash_flow_quarterly_twse is not None:
-                cashflow_quarterly_twse(cash_flow_quarterly_twse)
-            else:
-                st.error(f"無法獲取{symbol}-季報")
-    elif select == '上市' and select2 == '月營收':
-        symbol = st.text_input('輸入台股上市代號')
-        if st.button('查詢'):
-            twse_month(symbol)
-    elif select == '櫃檯' and select2 == '年報':
-        symbol = st.text_input('輸入台股櫃檯代號')
-        if st.button('查詢'):
-            balance_sheet_tpex, income_statement_tpex, cash_flow_tpex = financial_statements_tpex(symbol)
-            if balance_sheet_tpex is not None:
-                balance_tpex(balance_sheet_tpex)
-            if income_statement_tpex is not None:
-                income_tpex(income_statement_tpex)
-            if cash_flow_tpex is not None:
-                cashflow_tpex(cash_flow_tpex)
-            else:
-                st.error(f"無法獲取{symbol}-年報")
-    elif select == '櫃檯' and select2 == '季報':
-        symbol = st.text_input('輸入台股櫃買代號')
-        if st.button('查詢'):
-            balance_sheet_quarterly_tpex, income_statement_quarterly_tpex, cash_flow_quarterly_tpex = financial_statements_quarterly_tpex(symbol)
-            if balance_sheet_quarterly_tpex is not None:
-                balance_quarterly_tpex(balance_sheet_quarterly_tpex)
-            if income_statement_quarterly_tpex is not None:
-                income_quarterly_tpex(income_statement_quarterly_tpex)
-            if cash_flow_quarterly_tpex is not None :
-                cashflow_quarterly_tpex(cash_flow_quarterly_tpex)
-            else:
-                st.error(f"無法獲取{symbol}-季報")
-    elif select == '櫃檯' and select2 == '月營收':
-        symbol = st.text_input('輸入台股櫃檯代號')
-        if st.button('查詢'):
-            tpex_month(symbol)
-
-elif market == '台灣' and options == '交易數據':
-    select = st.selectbox('選擇查市場',['上市','櫃檯'])
-    select2 = st.selectbox('選擇查詢資訊',['個股','多股'])
-    if select == '上市' and select2 == '個股':
-        with st.expander("展開輸入參數"):
-            symbol = st.text_input('輸台股上市代號', key='single_stock')
-            start_date = st.date_input('開始日期', key='start_date')
-            end_date = st.date_input('结束日期', key='end_date')
-            mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
-        if st.button('查詢'):
-            twse_data = twse_data(symbol, start_date, end_date)
-            if twse_data is not None:
-                twse_candle(twse_data, mav_days)  # 將MAV天數傳遞給 plot_candle 函式
-                twse_trend(twse_data)
-            else:
-                st.error(f"無法獲取{symbol}交易數據or{symbol}為上櫃興櫃公司")
-    elif select == '上市' and select2 == '多股':
-        with st.expander("展開輸入參數"):
-            symbol1 = st.text_input('輸台股上市代號 1', key='stock1')+ ".tw"
-            symbol2 = st.text_input('輸台股上市代號 2', key='stock2')+ ".tw"
-            symbol3 = st.text_input('輸台股上市代號 3', key='stock3')+ ".tw"
-            start_date_multi = st.date_input('開始日期', key='start_date_multi')
-            end_date_multi = st.date_input('結束日期', key='end_date_multi')
-        if st.button('比較'):
-            symbols = [s.upper() for s in [symbol1, symbol2, symbol3] if s]
-            if symbols:
-                twse_data = twse_data_vs(symbols, start_date_multi, end_date_multi)
-                if twse_data is not None:
-                    twse_trend_vs(twse_data, symbols)
-                    twse_volume_chart(twse_data, symbols)
-                else:
-                    st.error('請輸入至少一隻台股上市')
-    if select == '櫃檯' and select2 == '個股':
-        with st.expander("展開輸入參數"):
-            symbol = st.text_input('輸台股櫃檯代號', key='single_stock')
-            start_date = st.date_input('開始日期', key='start_date')
-            end_date = st.date_input('结束日期', key='end_date')
-            mav_days = st.number_input('輸入MAV天數', min_value=15, max_value=360, value=15, step=1)  # 添加MAV天數的輸入
-        if st.button('查詢'):
-            tpex_data = tpex_data(symbol, start_date, end_date)
-            if tpex_data is not None:
-                tpex_candle(tpex_data, mav_days)  # 將MAV天數傳遞給 plot_candle 函式
-                tpex_trend(tpex_data)
-            else:
-                st.error(f"無法獲取{symbol}交易數據or{symbol}為上市公司")
-    elif select == '櫃檯' and select2 == '多股':
-        with st.expander("展開輸入參數"):
-            symbol1 = st.text_input('輸台股櫃檯代號 1', key='stock1')+".two"
-            symbol2 = st.text_input('輸台股櫃檯代號 2', key='stock2')+".two"
-            symbol3 = st.text_input('輸台股櫃檯代號 3', key='stock3')+".two"
-            start_date_multi = st.date_input('開始日期', key='start_date_multi')
-            end_date_multi = st.date_input('結束日期', key='end_date_multi')
-        if st.button('比較'):
-            symbols = [s.upper() for s in [symbol1, symbol2, symbol3] if s]
-            if symbols:
-                tpex_data = tpex_data_vs(symbols, start_date_multi, end_date_multi)
-                if tpex_data is not None:
-                    tpex_trend_vs(tpex_data, symbols)
-                    tpex_volume_chart(tpex_data, symbols)
-                else:
-                    st.error('請輸入至少一隻台股櫃檯')
+if __name__ == "__main__":
+    app()
