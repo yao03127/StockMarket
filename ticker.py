@@ -256,16 +256,21 @@ def calculate_price_difference(stock_data, period_days):
 #相關新聞
 @st.cache_data
 def get_stock_news(symbol):
-    url = f"https://some-financial-news-website.com/{symbol}"
-    response = res.get(url)
-    if response.status_code != 200:
-        print(f"Error: Unable to fetch data from the website. Status code: {response.status_code}")
+    url = f"https://actual-financial-news-website.com/{symbol}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    try:
+        response = res.get(url, headers=headers)
+        response.raise_for_status()  # 确保请求成功
+    except requests.exceptions.RequestException as e:
+        st.error(f"無法獲取{symbol}相關消息:{e}")
         return None
     soup = BeautifulSoup(response.text, 'html.parser')
     # 查找所有新闻项
     news_table = soup.find('table', class_='fullview-news-outer')
     if news_table is None:
-        print("Error: Could not find the news table in the HTML response.")
+        st.error(f"無法獲取{symbol}相關新聞表格")
         return None
     news_items = news_table.find_all('tr')
     news_data = []
