@@ -265,7 +265,7 @@ def get_stock_news(symbol):
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     }
     # 发送HTTP GET请求获取网页内容
-    response = requests.get(url, headers=headers)
+    response = res.get(url, headers=headers)
     response.raise_for_status()  # 检查请求是否成功
     # 尝试显式指定编码为UTF-8
     response.encoding = 'utf-8'
