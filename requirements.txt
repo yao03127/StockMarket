@@ -11,4 +11,3 @@ pytz==2024.1
 googletrans==3.1.0a0
 ta == 0.11.0
 twstock == 1.4.0
-TA-Lib == 0.4.28
