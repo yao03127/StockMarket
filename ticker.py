@@ -13,6 +13,7 @@ import re
 import numpy as np
 import time
 import plotly
+from bs4 import BeautifulSoup
 from plotly.subplots import make_subplots
 from datetime import datetime,timedelta
 from streamlit_folium import folium_static
@@ -254,32 +255,32 @@ def calculate_price_difference(stock_data, period_days):
 
 #相關新聞
 @st.cache_data
-def display_news_table(symbol):
-    translation_columns = {
-        'title':'標題',
-        'publisher':'出版商',
-        'link':'網址',
-        'relatedTickers':'相關股票代碼'
+def get_stock_news(symbol):
+    url = f'https://finviz.com/quote.ashx?t={symbol}&p=d'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     }
-    ticker = yf.Ticker(symbol)
-    news = ticker.news
-    news_df = pd.DataFrame(news).drop(columns=['uuid', 'providerPublishTime', 'type', 'thumbnail'])
-    news_df = news_df.rename(columns=translation_columns)
-    st.subheader(f'{symbol}-相關新聞')
-    st.write(news_df)
-
-@st.cache_data   
-def display_news_links(symbol):
-    ticker = yf.Ticker(symbol)
-    news = ticker.news
-    news_df = pd.DataFrame(news).drop(columns=['uuid', 'providerPublishTime', 'type', 'thumbnail'])
-    st.subheader(f'{symbol}-相關新聞連結')
-    # 存储链接的列表
-    urls = []
-    for url in news_df['link']:
-        urls.append(url)
-        st.markdown(f"<a href='{url}' target='_blank'>{url}</a>", unsafe_allow_html=True)
-
+    # 发送HTTP GET请求获取网页内容
+    response = res.get(url, headers=headers)
+    response.raise_for_status()  # 检查请求是否成功
+    # 解析HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+    # 查找所有新闻项
+    news_table = soup.find('table', class_='fullview-news-outer')
+    news_items = news_table.find_all('tr')
+    news_data = []
+    for news_item in news_items:
+        news_link = news_item.find('a', class_='tab-link-news')
+        if news_link:
+            news_title = news_link.text
+            news_url = news_link['href']
+            news_data.append({'Title': news_title, 'URL': news_url})
+    return news_data
+     
 # 台股區
 
 @st.cache_data
@@ -693,12 +694,25 @@ def app():
                 with st.expander(f'展開{symbol}-{time_range}數據'):
                     st.dataframe(stock_data)
                     st.download_button(f"下載{symbol}-{time_range}數據", stock_data.to_csv(index=True), file_name=f"{symbol}-{time_range}.csv", mime="text/csv")
+
     elif market == '美國' and options == '近期相關消息':
         st.subheader('近期相關新聞')
         symbol = st.text_input('輸入美股代號').upper()
         if st.button('查詢'):
-            display_news_table(symbol)
-            display_news_links(symbol)
+            if symbol:
+                news_data = get_stock_news(symbol)
+                if news_data:
+                    # 将新闻数据转换为DataFrame
+                    df = pd.DataFrame(news_data)
+                    st.subheader(f"{symbol}-近期相關消息")
+                    st.write(df)  # 显示表格
+                    st.subheader(f"{symbol}-近期相關消息連結")
+                    # 打印所有新闻链接
+                    for news in news_data:
+                        st.write(f'**[{news["Title"]}]({news["URL"]})**')
+                else:
+                    st.write(f"查無{symbol}近期相關消息")
+
     elif market == '台灣' and options == '大盤指數':
         period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
         if period == '年初至今':
