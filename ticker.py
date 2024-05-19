@@ -20,7 +20,6 @@ from geopy.geocoders import Nominatim
 from ta.trend import MACD
 from ta.momentum import StochasticOscillator
 from ta.momentum import RSIIndicator
-import talib
 
 #美股區
 
