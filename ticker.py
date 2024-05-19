@@ -256,29 +256,25 @@ def calculate_price_difference(stock_data, period_days):
 #相關新聞
 @st.cache_data
 def get_stock_news(symbol):
-    url = f'https://finviz.com/quote.ashx?t={symbol}&p=d'
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    }
-    # 发送HTTP GET请求获取网页内容
-    response = res.get(url, headers=headers)
-    response.raise_for_status()  # 检查请求是否成功
-    # 解析HTML
+    url = f"https://some-financial-news-website.com/{symbol}"
+    response = res.get(url)
+    if response.status_code != 200:
+        print(f"Error: Unable to fetch data from the website. Status code: {response.status_code}")
+        return None
     soup = BeautifulSoup(response.text, 'html.parser')
     # 查找所有新闻项
     news_table = soup.find('table', class_='fullview-news-outer')
+    if news_table is None:
+        print("Error: Could not find the news table in the HTML response.")
+        return None
     news_items = news_table.find_all('tr')
     news_data = []
     for news_item in news_items:
         news_link = news_item.find('a', class_='tab-link-news')
         if news_link:
-            news_title = news_link.text
-            news_url = news_link['href']
-            news_data.append({'Title': news_title, 'URL': news_url})
+            news_text = news_link.get_text(strip=True)
+            news_date = news_item.find('td', class_='news-date').get_text(strip=True)
+            news_data.append({'date': news_date, 'text': news_text})
     return news_data
      
 # 台股區
