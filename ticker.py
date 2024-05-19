@@ -260,12 +260,12 @@ def get_stock_news(symbol):
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
     try:
         response = res.get(url, headers=headers)
-        response.raise_for_status()  # 确保请求成功
+        response.raise_for_status()  # Ensure the request was successful
     except res.exceptions.RequestException as e:
-        st.error(f"無法獲取{symbol}相關消息:{e}")
+        st.error(f"無法獲取{symbol}相關消息: {e}")
         return None
     soup = BeautifulSoup(response.text, 'html.parser')
-    # 查找所有新闻项
+    # Find all news items
     news_table = soup.find('table', class_='fullview-news-outer')
     if news_table is None:
         st.error(f"無法獲取{symbol}相關新聞表格")
@@ -273,17 +273,19 @@ def get_stock_news(symbol):
     news_items = news_table.find_all('tr')
     news_data = []
     for news_item in news_items:
-        news_link = news_item.find('a', class_='tab-link-news')
+        cells = news_item.find_all('td')
+        if len(cells) < 2:
+            continue
+        date_info = cells[0].text.strip()
+        news_link = cells[1].find('a', class_='tab-link-news')
         if news_link:
-            news_title = news_link.text
-            news_text = news_link.get_text(strip=True)
+            news_title = news_link.text.strip()
             news_url = news_link['href']
-            news_data.append({'Title': news_title, 'URL': news_url})
+            news_data.append({'Date': date_info, 'Title': news_title, 'URL': news_url})
     return news_data
 
 
 # 台股區
-
 @st.cache_data
 def plot_index_tw(period,time):
     # Fetch historical data for S&P 500
