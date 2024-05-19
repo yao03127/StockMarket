@@ -276,7 +276,6 @@ def get_stock_news(symbol):
         news_link = news_item.find('a', class_='tab-link-news')
         if news_link:
             news_text = news_link.get_text(strip=True)
-            news_date = news_item.find('td', class_='news-date').get_text(strip=True)
             news_data.append({'date': news_date, 'text': news_text})
     return news_data
      
