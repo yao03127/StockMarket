@@ -275,10 +275,12 @@ def get_stock_news(symbol):
     for news_item in news_items:
         news_link = news_item.find('a', class_='tab-link-news')
         if news_link:
+            news_title = news_link.text
             news_text = news_link.get_text(strip=True)
             news_data.append({'Title': news_title, 'URL': news_url})
     return news_data
-  
+
+
 # 台股區
 
 @st.cache_data
