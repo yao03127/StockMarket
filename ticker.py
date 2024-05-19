@@ -796,12 +796,12 @@ def app():
                     with col1:
                         st.metric("最新收盤價", f"${latest_close_price:.2f}")
                     with col2:
-                        st.metric(f"{time_range}增長率", f"${price_difference:.2f}", f"{percentage_difference:+.2f}%")
+                        st.metric(f"{time}增長率", f"${price_difference:.2f}", f"{percentage_difference:+.2f}%")
                     with col3:
-                        st.metric(f"{time_range}最高價", f"${highest_price:.2f}")
+                        st.metric(f"{time}最高價", f"${highest_price:.2f}")
                     with col4:
-                        st.metric(f"{time_range}最低價", f"${lowest_price:.2f}")
-                    st.subheader(f"{symbol}-{time_range}K線圖表")
+                        st.metric(f"{time}最低價", f"${lowest_price:.2f}")
+                    st.subheader(f"{symbol}-{time}K線圖表")
                     fig = go.Figure()
                     fig = plotly.subplots.make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.01, row_heights=[0.8, 0.5, 0.5, 0.5])
                     mav5 = stock_data['close'].rolling(window=5).mean()
