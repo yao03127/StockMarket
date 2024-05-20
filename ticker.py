@@ -232,7 +232,6 @@ def dji_symbol():
     dji = pd.read_html(url.content, encoding='utf-8')
     st.write(dji[2])
 
-
 # 定义将字符串中的百分号去除并转换为小数的函数
 def clean_and_round(value):
     if isinstance(value, str):
@@ -247,6 +246,13 @@ def convert_volume_string_to_numeric(volume_str):
         return float(volume_str.replace('B', '')) * 1000000000
     else:
         return float(volume_str)
+
+# 统一的图表布局设置
+def get_chart_layout():
+    return {
+        "height": 600,  # 设置统一高度
+        "margin": {"l": 40, "r": 40, "t": 40, "b": 40}  # 设置统一的边距
+    }
 
 # 今日上漲
 def gainers_stock():
@@ -272,9 +278,9 @@ def gainers_stock():
             color = 'rgba(0,255,0,0.6)'  # 绿色
             # 绘制长条图
             fig = go.Figure(data=[go.Bar(x=df_sorted['Symbol'], y=df_sorted['% Change'], marker=dict(color=color))])
-            fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change')
+            fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change', **get_chart_layout())
             st.subheader('今日上漲前25名')
-            st.plotly_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
             with st.expander("展開數據"):
                 st.write(df_sorted)
             return df_sorted
@@ -285,60 +291,74 @@ def gainers_stock():
         st.error(f"獲取發生錯誤：{str(e)}")
         return None
 
-#今日下跌
+# 今日下跌
 def loser_stock():
     try:
-        loser_stock_res = res.get("https://finance.yahoo.com/losers/")
-        f = io.StringIO(loser_stock_res.text)
-        loser_stock_df_list = pd.read_html(f)
-        loser_stock_df = loser_stock_df_list[0]
-        loser_stock_df = loser_stock_df.drop(columns=['52 Week Range'])       
-        # 清理和保留小数点
-        loser_stock_df['% Change'] = loser_stock_df['% Change'].map(clean_and_round)
-        # 去除无法转换为数字的行
-        loser_stock_df = loser_stock_df.dropna(subset=['% Change'])
-        # 根据 % Change 列的值降序排列数据
-        loser_stock_df_sorted = loser_stock_df.sort_values(by='% Change', ascending=True)
-        st.subheader("今日下跌前25名")  
-        # 定义所有长条的统一颜色为绿色
-        color = 'rgba(255,0,0,0.6)'  # 深红色
-        # 绘制长条图
-        fig = go.Figure(data=[go.Bar(x=loser_stock_df_sorted['Symbol'], y=loser_stock_df_sorted['% Change'], marker=dict(color=color))])
-        fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change')
-        st.plotly_chart(fig)
-        with st.expander("展開數據"):
-            st.write(loser_stock_df_sorted)
-        return loser_stock_df_list
+        url = "https://finance.yahoo.com/losers/"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        response = res.get(url, headers=headers)
+        response.raise_for_status()
+        # 解析 HTML
+        soup = BeautifulSoup(response.text, 'html.parser')
+        table = soup.find('table')
+        if table:
+            table_html = str(table)
+            f = io.StringIO(table_html)
+            df = pd.read_html(f)[0]
+            # 清理和保留小数点
+            df['% Change'] = df['% Change'].map(clean_and_round)
+            # 去除无法转换为数字的行
+            df = df.dropna(subset=['% Change'])
+            # 根据 % Change 列的值降序排列数据
+            df_sorted = df.sort_values(by='% Change', ascending=True).head(25)
+            # 定义所有长条的统一颜色为红色
+            color = 'rgba(255,0,0,0.6)'  # 红色
+            # 绘制长条图
+            fig = go.Figure(data=[go.Bar(x=df_sorted['Symbol'], y=df_sorted['% Change'], marker=dict(color=color))])
+            fig.update_layout(xaxis_title='Symbol', yaxis_title='% Change', **get_chart_layout())
+            st.subheader('今日下跌前25名')
+            st.plotly_chart(fig, use_container_width=True)
+            with st.expander("展開數據"):
+                st.write(df_sorted)
+            return df_sorted
+        else:
+            st.error("未找到表格")
+            return None
     except Exception as e:
-        print(f"獲取發生錯誤：{str(e)}")
+        st.error(f"獲取發生錯誤：{str(e)}")
         return None
-    
-#今日熱門
+
+# 今日熱門
 def hot_stock():
     try:
-        hot_stock_res = res.get("https://finance.yahoo.com/most-active/")
-        f = io.StringIO(hot_stock_res.text)
-        hot_stock_df_list = pd.read_html(f)
-        hot_stock_df = hot_stock_df_list[0]
-        hot_stock_df = hot_stock_df.drop(columns=['52 Week Range'])
-        st.subheader("今日交易量前25名")
-        # 提取 Volume 列的值並轉換為數字
-        hot_stock_df['Numeric Volume'] = hot_stock_df['Volume'].apply(convert_volume_string_to_numeric)
-        symbols = hot_stock_df['Symbol']
-        numeric_volumes = hot_stock_df['Numeric Volume']
-        # 根据 Volume 列的值降序排列数据
-        hot_stock_df_sorted = hot_stock_df.sort_values(by='Numeric Volume', ascending=False)
-        symbols_sorted = hot_stock_df_sorted['Symbol']
-        numeric_volumes_sorted = hot_stock_df_sorted['Numeric Volume']      
-        # 定义所有长条的统一颜色为蓝色
-        color = 'rgba(0,0,255,0.6)'  # 蓝色
-        # 绘制长条图
-        fig = go.Figure(data=[go.Bar(x=symbols_sorted, y=numeric_volumes_sorted, marker=dict(color=color))])
-        fig.update_layout(xaxis_title='Symbol', yaxis_title='Volume')
-        st.plotly_chart(fig)
-        with st.expander("展開數據"):
-            st.write(hot_stock_df_sorted)
-        return hot_stock_df_sorted
+        url = "https://finance.yahoo.com/most-active/"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+        response = res.get(url, headers=headers)
+        response.raise_for_status()
+        # 解析 HTML
+        soup = BeautifulSoup(response.text, 'html.parser')
+        table = soup.find('table')
+        if table:
+            table_html = str(table)
+            f = io.StringIO(table_html)
+            df = pd.read_html(f)[0]
+            # 提取 Volume 列的值並轉換為數字
+            df['Numeric Volume'] = df['Volume'].apply(convert_volume_string_to_numeric)
+            # 根据 Volume 列的值降序排列数据
+            df_sorted = df.sort_values(by='Numeric Volume', ascending=False).head(25)
+            # 定义所有长条的统一颜色为蓝色
+            color = 'rgba(0,0,255,0.6)'  # 蓝色
+            # 绘制长条图
+            fig = go.Figure(data=[go.Bar(x=df_sorted['Symbol'], y=df_sorted['Numeric Volume'], marker=dict(color=color))])
+            fig.update_layout(xaxis_title='Symbol', yaxis_title='Volume', **get_chart_layout())
+            st.subheader('今日交易量前25名')
+            st.plotly_chart(fig, use_container_width=True)
+            with st.expander("展開數據"):
+                st.write(df_sorted)
+            return df_sorted
+        else:
+            st.error("未找到表格")
+            return None
     except Exception as e:
         st.error(f"獲取發生錯誤：{str(e)}")
         return None
@@ -769,13 +789,33 @@ def app():
             plot_foreign(period,time)
             plot_pct_foreign(period,time)
         with st.expander("顯示成份股"):
-            st.write('S&P500成份股')
+            st.write('S&P500')
             sp500_dsymbol()
-            st.write('NASDAQ100成份股')
+            st.write('NASDAQ100')
             nasdaq_100symbol()
-            st.write('道瓊工業成份股')
+            st.write('道瓊工業平均指數')
             dji_symbol()
         st.markdown("[美股指數名詞解釋](https://www.oanda.com/bvi-ft/lab-education/indices/us-4index/)")
+        st.markdown("[資料來源-S&P500](https://zh.wikipedia.org/wiki/S%26P_500成份股列表)")
+        st.markdown("[資料來源-NASDAQ100](https://zh.wikipedia.org/wiki/納斯達克100指數)")
+        st.markdown("[資料來源-道瓊工業平均指數](https://zh.wikipedia.org/zh-tw/道琼斯工业平均指数)")
+
+    elif market == '美國' and options == '今日熱門':
+        gainers_stock()
+        loser_stock()
+        hot_stock()
+        st.markdown("[資料來源](https://finance.yahoo.com)")
+
+    elif market == '美國' and options == '公司基本資訊':
+        symbol = st.text_input('輸入美股代號').upper()
+        if st.button('查詢'):
+            ticker = get_stock_statistics(symbol)
+            if ticker:
+                df = pd.DataFrame(list(ticker.items()), columns=['Metric', 'Value'])
+                categorize_and_plot(df)
+                with st.expander('展開數據'):
+                    st.write(df)
+                st.markdown("[資料來源](https://finviz.com)")
     
     elif market == '美國' and options == '交易數據':
         with st.expander("展開輸入參數"):
@@ -869,21 +909,6 @@ def app():
                 with st.expander(f'展開{symbol}-{time_range}數據'):
                     st.dataframe(stock_data)
                     st.download_button(f"下載{symbol}-{time_range}數據", stock_data.to_csv(index=True), file_name=f"{symbol}-{time_range}.csv", mime="text/csv")
-    
-    elif market == '美國' and options == '今日熱門':
-        gainers_stock()
-        loser_stock()
-        hot_stock()
-
-    elif market == '美國' and options == '公司基本資訊':
-        symbol = st.text_input('輸入美股代號').upper()
-        if st.button('查詢'):
-            ticker = get_stock_statistics(symbol)
-            if ticker:
-                df = pd.DataFrame(list(ticker.items()), columns=['Metric', 'Value'])
-                categorize_and_plot(df)
-                with st.expander('展開數據'):
-                    st.write(df)
 
     elif market == '美國' and options == '近期相關消息':
         st.subheader('近期相關新聞')
@@ -900,6 +925,7 @@ def app():
                     with st.expander(f'展開{symbol}-近期相關消息連結'):
                         for news in news_data:
                             st.write(f'**[{news["Title"]}]({news["URL"]})**')
+                    st.markdown("[資料來源](https://finviz.com)")
                 else:
                     st.write(f"查無{symbol}近期相關消息")
 
@@ -941,6 +967,20 @@ def app():
             plot_index_tw(period,time)
             plot_tw_asia(period,time)
             plot_pct_tw(period,time)
+        with st.expander("顯示成份股"):
+            st.write('新加坡海峽指數')
+            sti_symbol()
+            st.write('恒生指數')
+            hsi_symbol()
+            st.write('日經指數')
+            n225_symbol()
+            st.write('深證指數')
+            shz_symbol()
+        st.markdown("[資料來源-新加坡海峽指數](https://tw.tradingview.com/symbols/TVC-STI/components/)")
+        st.markdown("[資料來源-恒生指數](https://tw.tradingview.com/symbols/HSI-HSI/components/)")
+        st.markdown("[資料來源-日經指數](https://zh.wikipedia.org/zh-tw/日经平均指数)")
+        st.markdown("[資料來源-深證指數](https://zh.wikipedia.org/zh-tw/深圳证券交易所成份股价指数)")
+
     elif market == '台灣' and options == '交易數據':
         with st.expander("展開輸入參數"):
             range = st.selectbox('長期/短期', ['長期', '短期'])
