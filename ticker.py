@@ -405,7 +405,7 @@ def process_value(value):
             return value
     return value
 
-def categorize_and_plot(df):
+def categorize_and_plot(df,symbol):
     categories = {
         '估值指標': ['P/E', 'Forward P/E', 'PEG', 'P/S', 'P/B', 'P/C', 'P/FCF'],
         '盈利能力': ['Gross Margin', 'Oper. Margin', 'Profit Margin', 'ROA', 'ROE', 'ROI'],
@@ -437,6 +437,7 @@ def categorize_and_plot(df):
         bar = go.Bar(x=cat_data['Metric'], y=cat_data['Value'], name=category,marker=dict(color=cat_data['Value'], colorscale=colors[category], showscale=False))
         fig.add_trace(bar, row=row, col=col)
     fig.update_layout(height=900,showlegend=False)
+    st.subheader(f'{symbol}-基本資訊')
     st.plotly_chart(fig, use_container_width=True)
 
 # 定义函数以获取股票数据
@@ -812,9 +813,9 @@ def app():
             ticker = get_stock_statistics(symbol)
             if ticker:
                 df = pd.DataFrame(list(ticker.items()), columns=['Metric', 'Value'])
-                categorize_and_plot(df)
-                with st.expander('展開數據'):
-                    st.write(df)
+                categorize_and_plot(df,symbol)
+                with st.expander(f'展開{symbol}-基本資訊數據'):
+                    st.write(df,symbol)
                 st.markdown("[資料來源](https://finviz.com)")
     
     elif market == '美國' and options == '交易數據':
