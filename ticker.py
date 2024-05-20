@@ -254,7 +254,6 @@ def calculate_price_difference(stock_data, period_days):
     return price_difference, percentage_difference  # 返回价格差异和百分比变化
 
 #相關新聞
-@st.cache_data
 def get_stock_news(symbol):
     url = f"https://finviz.com/quote.ashx?t={symbol}&p=d"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
