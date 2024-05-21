@@ -964,7 +964,7 @@ def scrape_and_plot_finviz_data(symbol):
         width=1200   # 增加图表宽度
     )
     # 按降序对评级变化进行排序
-    df_sorted = df.sort_values(by='Rating Change', ascending=False)
+    df_sorted = df.sort_values(by='Rating Change', ascending=True)
 
     # 可视化 2：评级变化的分布，使用不同颜色
     fig2 = px.histogram(df_sorted, x='Rating Change', title='機構評級變化分佈', color='Rating Change')
