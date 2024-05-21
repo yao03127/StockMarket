@@ -363,6 +363,7 @@ def hot_stock():
         st.error(f"獲取發生錯誤：{str(e)}")
         return None
 
+# Function to get stock statistics
 def get_stock_statistics(symbol):
     url = f"https://finviz.com/quote.ashx?t={symbol}&p=d#statements"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
@@ -387,6 +388,7 @@ def get_stock_statistics(symbol):
             data[key] = value
     return data
 
+# Function to process values
 def process_value(value):
     if isinstance(value, str):
         if value.endswith('%'):
@@ -405,7 +407,8 @@ def process_value(value):
             return value
     return value
 
-def categorize_and_plot(df,symbol):
+# Function to categorize and plot
+def categorize_and_plot(df, symbol):
     categories = {
         '估值指標': ['P/E', 'Forward P/E', 'PEG', 'P/S', 'P/B', 'P/C', 'P/FCF'],
         '盈利能力': ['Gross Margin', 'Oper. Margin', 'Profit Margin', 'ROA', 'ROE', 'ROI'],
@@ -415,18 +418,16 @@ def categorize_and_plot(df,symbol):
         '銷售與收入': ['Sales', 'Income'],
         '其他': ['EPS (ttm)', 'EPS next Y', 'EPS next Q', 'Book/sh', 'Cash/sh', 'Dividend', 'Dividend %', 'Beta']
     }
-    colors = {
-        '估值指標': 'Pinkyl',
-        '盈利能力': 'Viridis',
-        '表現指標': 'Cividis',
-        '流動性': 'Reds',
-        '所有權': 'Turbo',
-        '銷售與收入': 'Inferno',
-        '其他': 'Magma'
-    }
-    num_categories = len(categories)
-    rows = (num_categories // 2) + (num_categories % 2)
-    fig = make_subplots(rows=rows, cols=2, subplot_titles=list(categories.keys()))
+
+    specs = [
+        [{'type': 'xy'}, {'type': 'xy'}],
+        [{'type': 'xy'}, {'type': 'xy'}],
+        [{'type': 'domain'}, {'type': 'domain'}],
+        [{'type': 'xy'}, {'type': 'xy'}]
+    ]
+
+    fig = make_subplots(rows=4, cols=2, subplot_titles=list(categories.keys()), specs=specs)
+
     plot_idx = 0
     for category, metrics in categories.items():
         plot_idx += 1
@@ -434,9 +435,16 @@ def categorize_and_plot(df,symbol):
         col = (plot_idx - 1) % 2 + 1
         cat_data = df[df['Metric'].isin(metrics)].copy()
         cat_data['Value'] = cat_data['Value'].apply(process_value)
-        bar = go.Bar(x=cat_data['Metric'], y=cat_data['Value'], name=category,marker=dict(color=cat_data['Value'], colorscale=colors[category], showscale=False))
-        fig.add_trace(bar, row=row, col=col)
-    fig.update_layout(height=900,showlegend=False)
+        cat_data = cat_data.sort_values(by='Value', ascending=False)
+
+        if category in ['所有權', '銷售與收入']:
+            chart = go.Pie(labels=cat_data['Metric'], values=cat_data['Value'], name=category, sort=False)
+        else:
+            chart = go.Bar(x=cat_data['Metric'], y=cat_data['Value'], name=category, marker=dict(color=cat_data['Value'], colorscale='Viridis'))
+        
+        fig.add_trace(chart, row=row, col=col)
+    
+    fig.update_layout(height=1200, showlegend=True)
     st.subheader(f'{symbol}-基本資訊')
     st.plotly_chart(fig, use_container_width=True)
 
@@ -509,7 +517,7 @@ def plot_balance_sheet(symbol):
         y=current_assets,
         mode='lines+markers',
         name='流動資產',
-        line=dict(color='blue', dash='dash')
+        line=dict(color='orange', dash='dash')
     ))
     # 總資產線圖
     fig.add_trace(go.Scatter(
@@ -600,7 +608,7 @@ def plot_balance_sheet_Q(symbol):
         y=current_assets,
         mode='lines+markers',
         name='流動資產',
-        line=dict(color='blue', dash='dash')
+        line=dict(color='orange', dash='dash')
     ))
     # 總資產線圖
     fig.add_trace(go.Scatter(
@@ -1344,6 +1352,7 @@ def app():
                 with st.expander(f'展開{symbol}-基本資訊數據'):
                     st.write(df,symbol)
                 st.markdown("[資料來源](https://finviz.com)")
+    
     elif market == '美國' and options == '財務狀況':
         with st.expander('展開輸入參數'):
             symbol = st.text_input("輸入美股代碼").upper()
