@@ -440,6 +440,458 @@ def categorize_and_plot(df,symbol):
     st.subheader(f'{symbol}-基本資訊')
     st.plotly_chart(fig, use_container_width=True)
 
+#三大報表
+
+# 資產負債表年度
+def plot_balance_sheet(symbol):
+    # 获取股票数据的函数
+    def get_balance_sheet(symbol):
+        stock = yf.Ticker(symbol)
+        balance_sheet = stock.balance_sheet
+        balance_sheet = balance_sheet.T  # 转置以便更容易读取
+        balance_sheet.index = pd.to_datetime(balance_sheet.index)  # 将索引转换为日期时间格式
+        return balance_sheet
+    # 获取资产负债表数据
+    balance_df = get_balance_sheet(symbol)
+    # 定义资产、负债和股东权益的列（基于存在的列）
+    current_assets_cols = ['Cash And Cash Equivalents', 'Gross Accounts Receivable', 'Inventory']
+    non_current_assets_cols = ['Net Property, Plant and Equipment', 'Goodwill', 'Intangible Assets']
+    current_liabilities_cols = ['Accounts Payable', 'Short Long Term Debt', 'Other Current Liabilities']
+    non_current_liabilities_cols = ['Long Term Debt', 'Deferred Tax Liabilities', 'Other Non-Current Liabilities']
+    equity_cols = ['Common Stock', 'Additional Paid In Capital', 'Retained Earnings']
+    # 校正列名，排除不存在的列
+    current_assets_cols = [col for col in current_assets_cols if col in balance_df.columns]
+    non_current_assets_cols = [col for col in non_current_assets_cols if col in balance_df.columns]
+    current_liabilities_cols = [col for col in current_liabilities_cols if col in balance_df.columns]
+    non_current_liabilities_cols = [col for col in non_current_liabilities_cols if col in balance_df.columns]
+    equity_cols = [col for col in equity_cols if col in balance_df.columns]
+    # 提取资产、负债和股东权益数据
+    current_assets = balance_df[current_assets_cols].sum(axis=1)
+    non_current_assets = balance_df[non_current_assets_cols].sum(axis=1)
+    current_liabilities = balance_df[current_liabilities_cols].sum(axis=1)
+    non_current_liabilities = balance_df[non_current_liabilities_cols].sum(axis=1)
+    equity = balance_df[equity_cols].sum(axis=1)
+    # 计算总资产和总负债
+    total_assets = equity + current_liabilities + non_current_liabilities
+    total_liabilities = current_liabilities + non_current_liabilities
+    # 仅保留每年的数据（仅选择一月份的数据）
+    balance_df_annual = balance_df
+    total_assets_annual = total_assets
+    total_liabilities_annual = total_liabilities
+    equity_annual = equity
+    # 创建堆叠图
+    fig = go.Figure()
+    # 股东权益堆叠
+    fig.add_trace(go.Bar(
+        x=balance_df_annual.index,
+        y=equity_annual,
+        name='股東權益',
+        marker=dict(color='rgba(0, 123, 255, 0.5)')
+    ))
+    # 負債堆叠
+    fig.add_trace(go.Bar(
+        x=balance_df_annual.index,
+        y=total_liabilities_annual,
+        name='負債',
+        marker=dict(color='rgba(255, 0, 0, 0.5)')
+    ))
+    # 流動負債線圖
+    fig.add_trace(go.Scatter(
+        x=balance_df_annual.index,
+        y=current_liabilities,
+        mode='lines+markers',
+        name='流動負債',
+        line=dict(color='red', dash='dash')
+    ))
+    # 流動資產線圖
+    fig.add_trace(go.Scatter(
+        x=balance_df_annual.index,
+        y=current_assets,
+        mode='lines+markers',
+        name='流動資產',
+        line=dict(color='blue', dash='dash')
+    ))
+    # 總資產線圖
+    fig.add_trace(go.Scatter(
+        x=balance_df_annual.index,
+        y=total_assets_annual,
+        mode='lines+markers',
+        name='總資產',
+        line=dict(color='purple', dash='dash')
+    ))
+    # 更新布局，增加图表的宽度和高度
+    fig.update_layout(
+        barmode='stack',
+        xaxis=dict(title='年度'),
+        yaxis=dict(title='金額 (百萬)'),
+        width=1200,  # 设置图表宽度
+        height=800  # 设置图表高度
+    )
+    # 顯示圖表
+    st.plotly_chart(fig)
+    # 展开显示原始数据
+    with st.expander('展開資產負債表'):
+        st.write(balance_df)
+
+# 資產負債表季度
+def plot_balance_sheet_Q(symbol):
+    # 获取股票数据的函数
+    def get_balance_sheet(symbol):
+        stock = yf.Ticker(symbol)
+        balance_sheet = stock.quarterly_balance_sheet
+        balance_sheet = balance_sheet.T  # 转置以便更容易读取
+        balance_sheet.index = pd.to_datetime(balance_sheet.index)  # 将索引转换为日期时间格式
+        return balance_sheet
+    # 获取资产负债表数据
+    balance_df = get_balance_sheet(symbol)
+    # 定义资产、负债和股东权益的列（基于存在的列）
+    current_assets_cols = ['Cash And Cash Equivalents', 'Gross Accounts Receivable', 'Inventory']
+    non_current_assets_cols = ['Net Property, Plant and Equipment', 'Goodwill', 'Intangible Assets']
+    current_liabilities_cols = ['Accounts Payable', 'Short Long Term Debt', 'Other Current Liabilities']
+    non_current_liabilities_cols = ['Long Term Debt', 'Deferred Tax Liabilities', 'Other Non-Current Liabilities']
+    equity_cols = ['Common Stock', 'Additional Paid In Capital', 'Retained Earnings']
+    # 校正列名，排除不存在的列
+    current_assets_cols = [col for col in current_assets_cols if col in balance_df.columns]
+    non_current_assets_cols = [col for col in non_current_assets_cols if col in balance_df.columns]
+    current_liabilities_cols = [col for col in current_liabilities_cols if col in balance_df.columns]
+    non_current_liabilities_cols = [col for col in non_current_liabilities_cols if col in balance_df.columns]
+    equity_cols = [col for col in equity_cols if col in balance_df.columns]
+    # 提取资产、负债和股东权益数据
+    current_assets = balance_df[current_assets_cols].sum(axis=1)
+    non_current_assets = balance_df[non_current_assets_cols].sum(axis=1)
+    current_liabilities = balance_df[current_liabilities_cols].sum(axis=1)
+    non_current_liabilities = balance_df[non_current_liabilities_cols].sum(axis=1)
+    equity = balance_df[equity_cols].sum(axis=1)
+    # 计算总资产和总负债
+    total_assets = equity + current_liabilities + non_current_liabilities
+    total_liabilities = current_liabilities + non_current_liabilities
+    # 仅保留每年的数据（仅选择一月份的数据）
+    balance_df_annual = balance_df
+    total_assets_annual = total_assets
+    total_liabilities_annual = total_liabilities
+    equity_annual = equity
+    # 创建堆叠图
+    fig = go.Figure()
+    # 股东权益堆叠
+    fig.add_trace(go.Bar(
+        x=balance_df_annual.index,
+        y=equity_annual,
+        name='股東權益',
+        marker=dict(color='rgba(0, 123, 255, 0.5)')
+    ))
+    # 負債堆叠
+    fig.add_trace(go.Bar(
+        x=balance_df_annual.index,
+        y=total_liabilities_annual,
+        name='負債',
+        marker=dict(color='rgba(255, 0, 0, 0.5)')
+    ))
+    # 流動負債線圖
+    fig.add_trace(go.Scatter(
+        x=balance_df_annual.index,
+        y=current_liabilities,
+        mode='lines+markers',
+        name='流動負債',
+        line=dict(color='red', dash='dash')
+    ))
+    # 流動資產線圖
+    fig.add_trace(go.Scatter(
+        x=balance_df_annual.index,
+        y=current_assets,
+        mode='lines+markers',
+        name='流動資產',
+        line=dict(color='blue', dash='dash')
+    ))
+    # 總資產線圖
+    fig.add_trace(go.Scatter(
+        x=balance_df_annual.index,
+        y=total_assets_annual,
+        mode='lines+markers',
+        name='總資產',
+        line=dict(color='purple', dash='dash')
+    ))
+    # 更新布局，增加图表的宽度和高度
+    fig.update_layout(
+        barmode='stack',
+        xaxis=dict(title='季度'),
+        yaxis=dict(title='金額 (百萬)'),
+        width=1200,  # 设置图表宽度
+        height=800  # 设置图表高度
+    )
+    # 顯示圖表
+    st.plotly_chart(fig)
+    # 展开显示原始数据
+    with st.expander('展開資產負債表'):
+        st.write(balance_df)
+
+#損益表年度
+def plot_income_statement(symbol):
+    # 获取股票数据的函数
+    def get_income_statement(symbol):
+        stock = yf.Ticker(symbol)
+        income_statement = stock.income_stmt
+        income_statement = income_statement.T  # 转置以便更容易读取
+        income_statement.index = pd.to_datetime(income_statement.index)  # 将索引转换为日期时间格式
+        return income_statement
+    # 获取收入报表数据
+    income_df = get_income_statement(symbol)
+    # 定义收入报表的列
+    gross_profit_col = 'Gross Profit'
+    operating_income_col = 'Operating Income'
+    net_income_col = 'Net Income'
+    # 确保所有列名都存在于数据中
+    assert gross_profit_col in income_df.columns, f"{gross_profit_col} 不存在于收入报表中"
+    assert operating_income_col in income_df.columns, f"{operating_income_col} 不存在于收入报表中"
+    assert net_income_col in income_df.columns, f"{net_income_col} 不存在于收入报表中"
+    # 提取所需数据
+    gross_profit = income_df[gross_profit_col]
+    operating_income = income_df[operating_income_col]
+    net_income = income_df[net_income_col]
+    # 创建线图
+    fig = go.Figure()
+    # 营业毛利线图
+    fig.add_trace(go.Scatter(
+        x=income_df.index,
+        y=gross_profit,
+        mode='lines+markers',
+        name='營業毛利',
+        line=dict(color='blue')
+    ))
+    # 营业净利线图
+    fig.add_trace(go.Scatter(
+        x=income_df.index,
+        y=operating_income,
+        mode='lines+markers',
+        name='營業淨利',
+        line=dict(color='green')
+    ))
+    # 税后净利线图
+    fig.add_trace(go.Scatter(
+        x=income_df.index,
+        y=net_income,
+        mode='lines+markers',
+        name='稅後淨利',
+        line=dict(color='red')
+    ))
+    # 更新布局
+    fig.update_layout(
+        xaxis=dict(title='年度'),
+        yaxis=dict(title='金額 (百萬)'),
+        width=1200,  # 设置图表宽度
+        height=800  # 设置图表高度
+    )
+    # 顯示圖表
+    st.plotly_chart(fig)
+    # 展开显示原始数据
+    with st.expander('展開損益表'):
+        st.write(income_df)
+
+#損益表季度
+def plot_income_statement_Q(symbol):
+    # 获取股票数据的函数
+    def get_income_statement(symbol):
+        stock = yf.Ticker(symbol)
+        income_statement = stock.quarterly_income_stmt
+        income_statement = income_statement.T  # 转置以便更容易读取
+        income_statement.index = pd.to_datetime(income_statement.index)  # 将索引转换为日期时间格式
+        return income_statement
+    # 获取收入报表数据
+    income_df = get_income_statement(symbol)
+    # 定义收入报表的列
+    gross_profit_col = 'Gross Profit'
+    operating_income_col = 'Operating Income'
+    net_income_col = 'Net Income'
+    # 确保所有列名都存在于数据中
+    assert gross_profit_col in income_df.columns, f"{gross_profit_col} 不存在于收入报表中"
+    assert operating_income_col in income_df.columns, f"{operating_income_col} 不存在于收入报表中"
+    assert net_income_col in income_df.columns, f"{net_income_col} 不存在于收入报表中"
+    # 提取所需数据
+    gross_profit = income_df[gross_profit_col]
+    operating_income = income_df[operating_income_col]
+    net_income = income_df[net_income_col]
+    # 创建线图
+    fig = go.Figure()
+    # 营业毛利线图
+    fig.add_trace(go.Scatter(
+        x=income_df.index,
+        y=gross_profit,
+        mode='lines+markers',
+        name='營業毛利',
+        line=dict(color='blue')
+    ))
+    # 营业净利线图
+    fig.add_trace(go.Scatter(
+        x=income_df.index,
+        y=operating_income,
+        mode='lines+markers',
+        name='營業淨利',
+        line=dict(color='green')
+    ))
+    # 税后净利线图
+    fig.add_trace(go.Scatter(
+        x=income_df.index,
+        y=net_income,
+        mode='lines+markers',
+        name='稅後淨利',
+        line=dict(color='red')
+    ))
+    # 更新布局
+    fig.update_layout(
+        xaxis=dict(title='季度'),
+        yaxis=dict(title='金額 (百萬)'),
+        width=1200,  # 设置图表宽度
+        height=800  # 设置图表高度
+    )
+    # 顯示圖表
+    st.plotly_chart(fig)
+    # 展开显示原始数据
+    with st.expander('展開損益表'):
+        st.write(income_df)
+
+#現金流量表年度
+def plot_cashflow_statement(symbol):
+    # 获取股票数据的函数
+    def get_cashflow_statement(symbol):
+        stock = yf.Ticker(symbol)
+        cashflow_statement = stock.cashflow
+        cashflow_statement = cashflow_statement.T  # 转置以便更容易读取
+        cashflow_statement.index = pd.to_datetime(cashflow_statement.index)  # 将索引转换为日期时间格式
+        return cashflow_statement
+    # 获取现金流量表数据
+    cashflow_df = get_cashflow_statement(symbol)
+    # 定义现金流量表的列
+    operating_cashflow_col = 'Operating Cash Flow'
+    investing_cashflow_col = 'Investing Cash Flow'
+    financing_cashflow_col = 'Financing Cash Flow'
+    net_cashflow_col = 'Changes In Cash'
+    # 确保所有列名都存在于数据中
+    assert operating_cashflow_col in cashflow_df.columns, f"{operating_cashflow_col} 不存在于现金流量表中"
+    assert investing_cashflow_col in cashflow_df.columns, f"{investing_cashflow_col} 不存在于现金流量表中"
+    assert financing_cashflow_col in cashflow_df.columns, f"{financing_cashflow_col} 不存在于现金流量表中"
+    assert net_cashflow_col in cashflow_df.columns, f"{net_cashflow_col} 不存在于现金流量表中"
+    # 提取所需数据
+    operating_cashflow = cashflow_df[operating_cashflow_col]
+    investing_cashflow = cashflow_df[investing_cashflow_col]
+    financing_cashflow = cashflow_df[financing_cashflow_col]
+    net_cashflow = cashflow_df[net_cashflow_col]
+    # 创建线图
+    fig = go.Figure()
+    # 经营活动现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=operating_cashflow,
+        mode='lines+markers',
+        name='營業活動',
+        line=dict(color='blue')
+    ))
+    # 投资活动现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=investing_cashflow,
+        mode='lines+markers',
+        name='投資活動',
+        line=dict(color='green')
+    ))
+    # 融资活动现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=financing_cashflow,
+        mode='lines+markers',
+        name='融資活動',
+        line=dict(color='red')
+    ))
+    # 净现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=net_cashflow,
+        mode='lines+markers',
+        name='淨現金流',
+        line=dict(color='purple')
+    ))
+    # 更新布局
+    fig.update_layout(
+        xaxis=dict(title='年度'),
+        yaxis=dict(title='金額 (百萬)'),
+        width=1200,  # 设置图表宽度
+        height=800  # 设置图表高度
+    )
+    # 在Streamlit中显示图表
+    st.plotly_chart(fig)
+    with st.expander('展開現金流量表'):
+        st.write(cashflow_df)
+
+#現金流量表季度
+def plot_cashflow_statement_Q(symbol):
+    # 获取股票数据的函数
+    def get_cashflow_statement(symbol):
+        stock = yf.Ticker(symbol)
+        cashflow_statement = stock.quarterly_cashflow
+        cashflow_statement = cashflow_statement.T  # 转置以便更容易读取
+        cashflow_statement.index = pd.to_datetime(cashflow_statement.index)  # 将索引转换为日期时间格式
+        return cashflow_statement
+    # 获取现金流量表数据
+    cashflow_df = get_cashflow_statement(symbol)
+    # 定义现金流量表的列
+    operating_cashflow_col = 'Operating Cash Flow'
+    investing_cashflow_col = 'Investing Cash Flow'
+    financing_cashflow_col = 'Financing Cash Flow'
+    net_cashflow_col = 'Changes In Cash'
+    # 确保所有列名都存在于数据中
+    assert operating_cashflow_col in cashflow_df.columns, f"{operating_cashflow_col} 不存在于现金流量表中"
+    assert investing_cashflow_col in cashflow_df.columns, f"{investing_cashflow_col} 不存在于现金流量表中"
+    assert financing_cashflow_col in cashflow_df.columns, f"{financing_cashflow_col} 不存在于现金流量表中"
+    assert net_cashflow_col in cashflow_df.columns, f"{net_cashflow_col} 不存在于现金流量表中"
+    # 提取所需数据
+    operating_cashflow = cashflow_df[operating_cashflow_col]
+    investing_cashflow = cashflow_df[investing_cashflow_col]
+    financing_cashflow = cashflow_df[financing_cashflow_col]
+    net_cashflow = cashflow_df[net_cashflow_col]
+    # 创建线图
+    fig = go.Figure()
+    # 经营活动现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=operating_cashflow,
+        mode='lines+markers',
+        name='營業活動',
+        line=dict(color='blue')
+    ))
+    # 投资活动现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=investing_cashflow,
+        mode='lines+markers',
+        name='投資活動',
+        line=dict(color='green')
+    ))
+    # 融资活动现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=financing_cashflow,
+        mode='lines+markers',
+        name='融資活動',
+        line=dict(color='red')
+    ))
+    # 净现金流线图
+    fig.add_trace(go.Scatter(
+        x=cashflow_df.index,
+        y=net_cashflow,
+        mode='lines+markers',
+        name='淨現金流',
+        line=dict(color='purple')
+    ))
+    # 更新布局
+    fig.update_layout(
+        xaxis=dict(title='季度'),
+        yaxis=dict(title='金額 (百萬)'),
+        width=1200,  # 设置图表宽度
+        height=800  # 设置图表高度
+    )
+    # 在Streamlit中显示图表
+    st.plotly_chart(fig)
+    with st.expander('展開現金流量表'):
+        st.write(cashflow_df)
+
 # 定义函数以获取股票数据
 def get_stock_data(symbol,time_range):
     stock_data = yf.download(symbol,period=time_range)
@@ -451,6 +903,73 @@ def calculate_price_difference(stock_data, period_days):
     price_difference = latest_price - previous_price  # 计算价格差异
     percentage_difference = (price_difference / previous_price) * 100  # 计算百分比变化
     return price_difference, percentage_difference  # 返回价格差异和百分比变化
+
+#機構評級
+# 从 Finviz 网站爬取数据并绘图的函数
+def scrape_and_plot_finviz_data(symbol):
+    # 爬虫部分
+    url = f"https://finviz.com/quote.ashx?t={symbol}"
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+    response = res.get(url, headers=headers)
+    # 检查请求是否成功
+    if response.status_code != 200:
+        raise Exception(f"Failed to fetch data from {url}, status code: {response.status_code}")
+    soup = BeautifulSoup(response.content, 'html.parser')
+    # 定位包含分析师评级的表格
+    table = soup.find('table', class_='js-table-ratings styled-table-new is-rounded is-small')
+    # 检查是否成功找到表格
+    if table is None:
+        raise Exception("Failed to find the ratings table on the page.")
+    # 从表格中提取数据
+    data = []
+    for row in table.find_all('tr')[1:]:  # 跳过表头
+        cols = row.find_all('td')
+        data.append({
+            "Date": cols[0].text.strip(),
+            "Action": cols[1].text.strip(),
+            "Analyst": cols[2].text.strip(),
+            "Rating Change": cols[3].text.strip(),
+            "Price Target Change": cols[4].text.strip() if len(cols) > 4 else None
+        })
+    # 将数据转换为 DataFrame
+    df = pd.DataFrame(data)
+    # 移除空的目标价格变化
+    df = df.dropna(subset=['Price Target Change'])
+    # 清理数据，替换特殊字符
+    df['Price Target Change'] = df['Price Target Change'].str.replace('→', '->').str.replace(' ', '')
+    # 将目标价格变化转换为数值范围
+    price_change_ranges = df['Price Target Change'].str.extract(r'\$(\d+)->\$(\d+)')
+    price_change_ranges = price_change_ranges.apply(pd.to_numeric)
+    df['Price Target Start'] = price_change_ranges[0]
+    df['Price Target End'] = price_change_ranges[1]
+    # 绘图部分
+    # 可视化 1：分析师的目标价格变化
+    fig1 = go.Figure()
+    for i, row in df.iterrows():
+        fig1.add_trace(go.Scatter(
+            x=[row['Price Target Start'], row['Price Target End']],
+            y=[row['Analyst'], row['Analyst']],
+            mode='lines+markers+text',
+            line=dict(color='blue' if row['Price Target End'] >= row['Price Target Start'] else 'red', width=2),
+            marker=dict(size=10, color='blue' if row['Price Target End'] >= row['Price Target Start'] else 'red'),
+            text=[f"${row['Price Target Start']}", f"${row['Price Target End']}"],
+            textposition="top center"
+        ))
+    fig1.update_layout(
+        title='機構目標價格變化',
+        xaxis_title='目標價格',
+        yaxis_title='機構',
+        yaxis=dict(type='category'),
+        showlegend=False,
+    )
+    # 可视化 2：评级变化的分布，使用不同颜色
+    fig2 = px.histogram(df, x='Rating Change', title='機構評級變化分佈', color='Rating Change')
+    # 显示图表
+    st.subheader(f'機構買賣{symbol}資訊')
+    st.plotly_chart(fig1, use_container_width=True)
+    st.plotly_chart(fig2, use_container_width=True)
+    with st.expander(f'展開{symbol}機構評級數據'):
+        st.write(df)
 
 #相關新聞
 def get_stock_news(symbol):
@@ -734,7 +1253,7 @@ def app():
     st.header(' ',divider="rainbow")
     st.sidebar.title('📈 Menu')
     market = st.sidebar.selectbox('選擇市場', ['美國','台灣'])
-    options = st.sidebar.selectbox('選擇功能', ['大盤指數','今日熱門','公司基本資訊','交易數據','近期相關消息'])
+    options = st.sidebar.selectbox('選擇功能', ['大盤指數','今日熱門','公司基本資訊','財務狀況','交易數據','機構買賣','近期相關消息'])
     st.sidebar.markdown('''
     免責聲明：        
     1. K 線圖觀看角度      
@@ -817,7 +1336,27 @@ def app():
                 with st.expander(f'展開{symbol}-基本資訊數據'):
                     st.write(df,symbol)
                 st.markdown("[資料來源](https://finviz.com)")
-    
+    elif market == '美國' and options == '財務狀況':
+        with st.expander('展開輸入參數'):
+            symbol = st.text_input("輸入美股代碼").upper()
+            opin = st.selectbox('年度/季度',['年度', '季度'])
+            st.write('有些資料可能找不到無法呈現')
+        if st.button('查詢'):
+            if opin == '年度':
+                st.subheader(f'{symbol}-資產負債表/年度')
+                plot_balance_sheet(symbol)
+                st.subheader(f'{symbol}-損益表/年度')
+                plot_income_statement(symbol)
+                st.subheader(f'{symbol}-現金流量表/年度')
+                plot_cashflow_statement(symbol)
+            elif opin == '季度':
+                st.subheader(f'{symbol}-資產負債表/季度')
+                plot_balance_sheet_Q(symbol)
+                st.subheader(f'{symbol}-損益表/季度')
+                plot_income_statement_Q(symbol)
+                st.subheader(f'{symbol}-現金流量表/季度')
+                plot_cashflow_statement_Q(symbol)
+
     elif market == '美國' and options == '交易數據':
         with st.expander("展開輸入參數"):
             range = st.selectbox('長期/短期', ['長期', '短期'])
@@ -910,6 +1449,12 @@ def app():
                 with st.expander(f'展開{symbol}-{time_range}數據'):
                     st.dataframe(stock_data)
                     st.download_button(f"下載{symbol}-{time_range}數據", stock_data.to_csv(index=True), file_name=f"{symbol}-{time_range}.csv", mime="text/csv")
+    
+    elif market == '美國' and options == '機構買賣':
+        symbol = st.text_input('輸入美股代號').upper()
+        if st.button('查詢'):
+            scrape_and_plot_finviz_data(symbol)
+            st.markdown("[資料來源](https://finviz.com)")
 
     elif market == '美國' and options == '近期相關消息':
         st.subheader('近期相關新聞')
