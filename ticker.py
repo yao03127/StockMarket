@@ -194,7 +194,7 @@ def sp500_dsymbol():
         colors = px.colors.qualitative.Plotly
         # 繪製統計圖
         fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
-        fig.update_layout(xaxis_title='全球行業分類標準部門', yaxis_title='數量', width=600, height=300)   
+        fig.update_layout(xaxis_title='全球行業分類標準部門', yaxis_title='數量', width=500, height=500)   
         # 顯示統計圖
         st.write('S&P500產業統計')
         st.plotly_chart(fig) 
@@ -218,7 +218,7 @@ def nasdaq_100symbol():
         colors = px.colors.qualitative.Plotly
         # 繪製統計圖
         fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
-        fig.update_layout(xaxis_title='全球行業分類標準部門', yaxis_title='數量', width=600, height=300)   
+        fig.update_layout(xaxis_title='全球行業分類標準部門', yaxis_title='數量', width=500, height=500)   
         # 顯示統計圖
         st.write('NASDAQ-100產業統計')
         st.plotly_chart(fig) 
@@ -524,7 +524,7 @@ def plot_balance_sheet(symbol):
         barmode='stack',
         xaxis=dict(title='年度'),
         yaxis=dict(title='金額 (百萬)'),
-        width=1200,  # 设置图表宽度
+        width=1000,  # 设置图表宽度
         height=800  # 设置图表高度
     )
     # 顯示圖表
@@ -615,7 +615,7 @@ def plot_balance_sheet_Q(symbol):
         barmode='stack',
         xaxis=dict(title='季度'),
         yaxis=dict(title='金額 (百萬)'),
-        width=1200,  # 设置图表宽度
+        width=1000,  # 设置图表宽度
         height=800  # 设置图表高度
     )
     # 顯示圖表
@@ -677,7 +677,7 @@ def plot_income_statement(symbol):
     fig.update_layout(
         xaxis=dict(title='年度'),
         yaxis=dict(title='金額 (百萬)'),
-        width=1200,  # 设置图表宽度
+        width=1000,  # 设置图表宽度
         height=800  # 设置图表高度
     )
     # 顯示圖表
@@ -739,7 +739,7 @@ def plot_income_statement_Q(symbol):
     fig.update_layout(
         xaxis=dict(title='季度'),
         yaxis=dict(title='金額 (百萬)'),
-        width=1200,  # 设置图表宽度
+        width=1000,  # 设置图表宽度
         height=800  # 设置图表高度
     )
     # 顯示圖表
@@ -812,7 +812,7 @@ def plot_cashflow_statement(symbol):
     fig.update_layout(
         xaxis=dict(title='年度'),
         yaxis=dict(title='金額 (百萬)'),
-        width=1200,  # 设置图表宽度
+        width=1000,  # 设置图表宽度
         height=800  # 设置图表高度
     )
     # 在Streamlit中显示图表
@@ -884,7 +884,7 @@ def plot_cashflow_statement_Q(symbol):
     fig.update_layout(
         xaxis=dict(title='季度'),
         yaxis=dict(title='金額 (百萬)'),
-        width=1200,  # 设置图表宽度
+        width=1000,  # 设置图表宽度
         height=800  # 设置图表高度
     )
     # 在Streamlit中显示图表
@@ -961,7 +961,7 @@ def scrape_and_plot_finviz_data(symbol):
         yaxis=dict(type='category'),
         showlegend=False,
         height=800,  # 增加图表高度
-        width=1200   # 增加图表宽度
+        width=1000   # 增加图表宽度
     )
     # 按降序对评级变化进行排序
     df_sorted = df.sort_values(by='Rating Change', ascending=True)
@@ -970,7 +970,7 @@ def scrape_and_plot_finviz_data(symbol):
     fig2 = px.histogram(df_sorted, x='Rating Change', title='機構評級變化分佈', color='Rating Change')
     fig2.update_layout(
         height=800,  # 增加图表高度
-        width=1200   # 增加图表宽度
+        width=1000   # 增加图表宽度
     )
     # 显示图表
     st.subheader(f'機構買賣{symbol}資訊')
@@ -1144,7 +1144,7 @@ def sti_symbol():
         colors = px.colors.qualitative.Plotly
         # 繪製統計圖
         fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
-        fig.update_layout(xaxis_title='部門', yaxis_title='數量', width=600, height=300)   
+        fig.update_layout(xaxis_title='部門', yaxis_title='數量', width=500, height=500)   
         # 顯示統計圖
         st.write('新加坡海峽指數產業統計')
         st.plotly_chart(fig) 
@@ -1167,7 +1167,7 @@ def hsi_symbol():
         colors = px.colors.qualitative.Plotly
         # 繪製統計圖
         fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
-        fig.update_layout(xaxis_title='部門', yaxis_title='數量', width=600, height=300)   
+        fig.update_layout(xaxis_title='部門', yaxis_title='數量', width=500, height=500)   
         # 顯示統計圖
         st.write('恒生指數產業統計')
         st.plotly_chart(fig) 
@@ -1190,7 +1190,7 @@ def n225_symbol():
         colors = px.colors.qualitative.Plotly
         # 繪製統計圖
         fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
-        fig.update_layout(xaxis_title='行業', yaxis_title='數量', width=600, height=300)   
+        fig.update_layout(xaxis_title='行業', yaxis_title='數量', width=500, height=500)   
         # 顯示統計圖
         st.write('日經指數產業統計')
         st.plotly_chart(fig) 
@@ -1214,7 +1214,7 @@ def shz_symbol():
         colors = px.colors.qualitative.Plotly
         # 繪製統計圖
         fig = go.Figure(data=[go.Bar(x=industries.index, y=industries.values, marker_color=colors)])
-        fig.update_layout(xaxis_title='所屬行業', yaxis_title='數量', width=600, height=300)   
+        fig.update_layout(xaxis_title='所屬行業', yaxis_title='數量', width=500, height=500)   
         # 顯示統計圖
         st.write('深證指數產業統計')
         st.plotly_chart(fig) 
