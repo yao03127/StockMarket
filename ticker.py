@@ -416,6 +416,7 @@ def categorize_and_plot(df, symbol):
         '流動性': ['Quick Ratio', 'Current Ratio'],
         '所有權': ['Insider Own', 'Inst Own', 'Shs Outstanding'],
         '銷售與收入': ['Sales', 'Income'],
+        '簡單移動平均':['SMA20','SMA50','SMA200'],
         '其他': ['EPS (ttm)', 'EPS next Y', 'EPS next Q', 'Book/sh', 'Cash/sh', 'Dividend', 'Dividend %', 'Beta']
     }
     specs = [
@@ -1344,7 +1345,7 @@ def app():
                 df = pd.DataFrame(list(ticker.items()), columns=['Metric', 'Value'])
                 categorize_and_plot(df,symbol)
                 with st.expander(f'展開{symbol}-基本資訊數據'):
-                    st.write(df,symbol)
+                    st.write(df)
                 st.markdown("[資料來源](https://finviz.com)")
     
     elif market == '美國' and options == '財務狀況':
@@ -1633,7 +1634,6 @@ def app():
                     st.error(f'查無{symbol}數據')
                 with st.expander(f'展開{symbol}-{time}數據'):
                     st.dataframe(stock_data)
-                    st.download_button(f"下載{symbol}-{time}數據", stock_data.to_csv(index=True), file_name=f"{symbol}-{time}.csv", mime="text/csv")
-
+                    
 if __name__ == "__main__":
     app()
