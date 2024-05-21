@@ -128,8 +128,6 @@ def plot_foreign(period,time):
     fig.add_trace(go.Scatter(x=jp_close.index, y=jp_close.values, mode='lines', name='日經指數'), row=3, col=2)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
-    fig.update_xaxes(title_text="Date", row=1, col=1)
-    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 def plot_pct_foreign(period,time):
@@ -1045,8 +1043,6 @@ def plot_index_tw(period,time):
     fig.add_trace(go.Scatter(x=tw50_close.index, y=tw50_close.values, mode='lines', name='0050'),row=3,col=1)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
-    fig.update_xaxes(title_text="Date", row=1, col=1)
-    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 def plot_tw_asia(period,time):
@@ -1084,8 +1080,6 @@ def plot_tw_asia(period,time):
     fig.add_trace(go.Scatter(x=th_close.index, y=th_close.values, mode='lines', name='泰國SET指數'),row=4,col=2)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
-    fig.update_xaxes(title_text="Date", row=1, col=1)
-    fig.update_yaxes(title_text="Close Price", row=1, col=1)
     st.plotly_chart(fig, use_container_width=True)
 
 def plot_pct_tw(period,time):
