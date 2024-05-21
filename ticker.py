@@ -418,16 +418,13 @@ def categorize_and_plot(df, symbol):
         '銷售與收入': ['Sales', 'Income'],
         '其他': ['EPS (ttm)', 'EPS next Y', 'EPS next Q', 'Book/sh', 'Cash/sh', 'Dividend', 'Dividend %', 'Beta']
     }
-
     specs = [
         [{'type': 'xy'}, {'type': 'xy'}],
         [{'type': 'xy'}, {'type': 'xy'}],
         [{'type': 'domain'}, {'type': 'domain'}],
         [{'type': 'xy'}, {'type': 'xy'}]
     ]
-
     fig = make_subplots(rows=4, cols=2, subplot_titles=list(categories.keys()), specs=specs)
-
     plot_idx = 0
     for category, metrics in categories.items():
         plot_idx += 1
@@ -436,14 +433,11 @@ def categorize_and_plot(df, symbol):
         cat_data = df[df['Metric'].isin(metrics)].copy()
         cat_data['Value'] = cat_data['Value'].apply(process_value)
         cat_data = cat_data.sort_values(by='Value', ascending=False)
-
         if category in ['所有權', '銷售與收入']:
             chart = go.Pie(labels=cat_data['Metric'], values=cat_data['Value'], name=category, sort=False)
         else:
             chart = go.Bar(x=cat_data['Metric'], y=cat_data['Value'], name=category, marker=dict(color=cat_data['Value'], colorscale='Viridis'))
-        
         fig.add_trace(chart, row=row, col=col)
-    
     fig.update_layout(height=1200, showlegend=True)
     st.subheader(f'{symbol}-基本資訊')
     st.plotly_chart(fig, use_container_width=True)
