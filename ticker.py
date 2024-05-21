@@ -905,7 +905,6 @@ def calculate_price_difference(stock_data, period_days):
     return price_difference, percentage_difference  # 返回价格差异和百分比变化
 
 #機構評級
-# 从 Finviz 网站爬取数据并绘图的函数
 def scrape_and_plot_finviz_data(symbol):
     # 爬虫部分
     url = f"https://finviz.com/quote.ashx?t={symbol}"
@@ -961,9 +960,18 @@ def scrape_and_plot_finviz_data(symbol):
         yaxis_title='機構',
         yaxis=dict(type='category'),
         showlegend=False,
+        height=800,  # 增加图表高度
+        width=1200   # 增加图表宽度
     )
+    # 按降序对评级变化进行排序
+    df_sorted = df.sort_values(by='Rating Change', ascending=False)
+
     # 可视化 2：评级变化的分布，使用不同颜色
-    fig2 = px.histogram(df, x='Rating Change', title='機構評級變化分佈', color='Rating Change')
+    fig2 = px.histogram(df_sorted, x='Rating Change', title='機構評級變化分佈', color='Rating Change')
+    fig2.update_layout(
+        height=800,  # 增加图表高度
+        width=1200   # 增加图表宽度
+    )
     # 显示图表
     st.subheader(f'機構買賣{symbol}資訊')
     st.plotly_chart(fig1, use_container_width=True)
