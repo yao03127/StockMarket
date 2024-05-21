@@ -916,12 +916,14 @@ def scrape_and_plot_finviz_data(symbol):
     # 检查请求是否成功
     if response.status_code != 200:
         raise Exception(f"Failed to fetch data from {url}, status code: {response.status_code}")
+    
     soup = BeautifulSoup(response.content, 'html.parser')
     # 定位包含分析师评级的表格
     table = soup.find('table', class_='js-table-ratings styled-table-new is-rounded is-small')
     # 检查是否成功找到表格
     if table is None:
         raise Exception("Failed to find the ratings table on the page.")
+    
     # 从表格中提取数据
     data = []
     for row in table.find_all('tr')[1:]:  # 跳过表头
@@ -933,6 +935,7 @@ def scrape_and_plot_finviz_data(symbol):
             "Rating Change": cols[3].text.strip(),
             "Price Target Change": cols[4].text.strip() if len(cols) > 4 else None
         })
+    
     # 将数据转换为 DataFrame
     df = pd.DataFrame(data)
     # 移除空的目标价格变化
@@ -944,6 +947,12 @@ def scrape_and_plot_finviz_data(symbol):
     price_change_ranges = price_change_ranges.apply(pd.to_numeric)
     df['Price Target Start'] = price_change_ranges[0]
     df['Price Target End'] = price_change_ranges[1]
+    
+    # 动态生成评级变化的顺序
+    rating_order = df['Rating Change'].unique().tolist()
+    
+    df['Rating Change'] = pd.Categorical(df['Rating Change'], categories=rating_order, ordered=True)
+    
     # 绘图部分
     # 可视化 1：分析师的目标价格变化
     fig1 = go.Figure()
@@ -957,6 +966,7 @@ def scrape_and_plot_finviz_data(symbol):
             text=[f"${row['Price Target Start']}", f"${row['Price Target End']}"],
             textposition="top center"
         ))
+    
     fig1.update_layout(
         title='機構目標價格變化',
         xaxis_title='目標價格',
@@ -966,7 +976,8 @@ def scrape_and_plot_finviz_data(symbol):
         height=800,  # 增加图表高度
         width=1000   # 增加图表宽度
     )
-    # 按降序对评级变化进行排序
+
+    # 按指定顺序对评级变化进行排序
     df_sorted = df.sort_values(by='Rating Change', ascending=True)
 
     # 可视化 2：评级变化的分布，使用不同颜色
@@ -1634,6 +1645,6 @@ def app():
                     st.error(f'查無{symbol}數據')
                 with st.expander(f'展開{symbol}-{time}數據'):
                     st.dataframe(stock_data)
-                    
+
 if __name__ == "__main__":
     app()
