@@ -1303,7 +1303,7 @@ def app():
     ''')
 
     if market == '美國' and options == '大盤指數':
-        period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
+        period = st.selectbox('選擇時長',['年初至今','1年','2年','5年','10年','全部'])
         if period == '年初至今':
             period = 'ytd'
             time = '年初至今'
@@ -1318,9 +1318,9 @@ def app():
             plot_pct(period,time)
             plot_foreign(period,time)
             plot_pct_foreign(period,time)
-        elif period == '3年':
-            period = '3y'
-            time = '3年'
+        elif period == '2年':
+            period = '2y'
+            time = '2年'
             plot_index(period,time)
             plot_pct(period,time)
             plot_foreign(period,time)
@@ -1401,13 +1401,13 @@ def app():
             range = st.selectbox('長期/短期', ['長期', '短期'])
             if range == '長期':
                 symbol = st.text_input("輸入美股代碼").upper()
-                time_range = st.selectbox('選擇時長', ['1年', '3年', '5年', '10年', '全部'])
+                time_range = st.selectbox('選擇時長', ['1年', '2年', '5年', '10年', '全部'])
                 if time_range == '1年':
                     period = '1y'
                     period_days = 252
-                elif time_range == '3年':
-                    period = '3y'
-                    period_days = 252 * 3
+                elif time_range == '2年':
+                    period = '2y'
+                    period_days = 252 * 2
                 elif time_range == '5年':
                     period = '5y'
                     period_days = 252 * 5
@@ -1417,9 +1417,10 @@ def app():
                 elif time_range == '全部':
                     period = 'max'
                     period_days = None  # 使用全部数据的长度
+
             elif range == '短期':
                 symbol = st.text_input("輸入美股代碼").upper()
-                time_range = st.selectbox('選擇時長',['1個月','2個月','3個月','6個月'])
+                time_range = st.selectbox('選擇時長',['1個月','3個月','6個月'])
                 if time_range == '1個月':
                     period = '1mo'
                     period_days = 21  # 一个月大约是21个交易日
@@ -1515,7 +1516,7 @@ def app():
                     st.write(f"查無{symbol}近期相關消息")
 
     elif market == '台灣' and options == '大盤指數':
-        period = st.selectbox('選擇時長',['年初至今','1年','3年','5年','10年','全部'])
+        period = st.selectbox('選擇時長',['年初至今','1年','2年','5年','10年','全部'])
         if period == '年初至今':
             time = '年初至今'
             period = 'ytd'
@@ -1528,9 +1529,9 @@ def app():
             plot_index_tw(period,time)
             plot_tw_asia(period,time)
             plot_pct_tw(period,time)
-        elif period == '3年':
-            time = '3年'
-            period = '3y'
+        elif period == '2年':
+            time = '2年'
+            period = '2y'
             plot_index_tw(period,time)
             plot_tw_asia(period,time)
             plot_pct_tw(period,time)
@@ -1571,15 +1572,15 @@ def app():
             range = st.selectbox('長期/短期', ['長期', '短期'])
             symbol = st.text_input("輸入台股代碼")
             if range == '長期':
-                time_range = st.selectbox('選擇時長', ['1年', '3年', '5年', '10年'])
+                time_range = st.selectbox('選擇時長', ['1年', '2年', '5年', '10年'])
                 if time_range == '1年':
                     time_range = 1
                     time = '1年'
                     period_days = 252
-                elif time_range == '3年':
-                    time_range = 3
-                    time = '3年'
-                    period_days = 252 * 3
+                elif time_range == '2年':
+                    time_range = 2
+                    time = '2年'
+                    period_days = 252 * 2
                 elif time_range == '5年':
                     time_range = 5
                     time = '5年'
@@ -1589,15 +1590,11 @@ def app():
                     time = '10年'
                     period_days = 252 * 10
             elif range == '短期':
-                time_range = st.selectbox('選擇時長',['1個月','2個月','3個月','6個月'])
+                time_range = st.selectbox('選擇時長',['1個月','3個月','6個月'])
                 if time_range == '1個月':
                     time_range = 1
                     time = '1個月'
                     period_days = 21
-                elif time_range == '2個月':
-                    time_range = 2
-                    time = '2個月'
-                    period_days = 42
                 elif time_range == '3個月':
                     time_range = 3
                     time = '3個月'
