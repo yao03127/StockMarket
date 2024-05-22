@@ -411,21 +411,19 @@ def get_stock_statistics(symbol):
 # Function to process values
 def process_value(value):
     if isinstance(value, str):
+        value = value.replace(',', '')  # Remove commas for thousands
         if value.endswith('%'):
-            return float(value[:-1])
+            return float(value[:-1])  # Convert percentage to float
         elif value.endswith('B'):
-            return float(value[:-1]) * 1e9
+            return float(value[:-1]) * 1e9  # Convert billions to float
         elif value.endswith('M'):
-            return float(value[:-1]) * 1e6
+            return float(value[:-1]) * 1e6  # Convert millions to float
         elif value.endswith('K'):
-            return float(value[:-1]) * 1e3
-        elif ' ' in value:
-            return value  # For values like "NDX, S&P 500"
-        try:
-            return float(value.replace(',', ''))
-        except ValueError:
-            return value
-    return value
+            return float(value[:-1]) * 1e3  # Convert thousands to float
+        elif value.replace('.', '', 1).isdigit():  # Check if it's a numeric string
+            return float(value)  # Convert numeric string to float
+    return value  # Return the original value if no conversion is needed
+
 
 # Function to categorize and plot
 def categorize_and_plot(df, symbol):
@@ -453,6 +451,8 @@ def categorize_and_plot(df, symbol):
         col = (plot_idx - 1) % 2 + 1
         cat_data = df[df['Metric'].isin(metrics)].copy()
         cat_data['Value'] = cat_data['Value'].apply(process_value)
+        cat_data['Value'] = pd.to_numeric(cat_data['Value'], errors='coerce')  # Convert non-numeric values to NaN
+        cat_data = cat_data.dropna(subset=['Value'])  # Drop rows with NaN values in 'Value'
         cat_data = cat_data.sort_values(by='Value', ascending=False)
         if category in ['所有權', '銷售與收入']:
             chart = go.Pie(labels=cat_data['Metric'], values=cat_data['Value'], name=category, sort=False)
@@ -462,6 +462,7 @@ def categorize_and_plot(df, symbol):
     fig.update_layout(height=1200, showlegend=True)
     st.subheader(f'{symbol}-基本資訊')
     st.plotly_chart(fig, use_container_width=True)
+
 
 #三大報表
 
