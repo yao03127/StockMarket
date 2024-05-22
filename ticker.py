@@ -24,7 +24,6 @@ from ta.momentum import StochasticOscillator
 from ta.momentum import RSIIndicator
 
 #美股區
-@ st.cache_data
 def plot_index(period,time):
     time = time
     # Fetch historical data for S&P 500
@@ -55,7 +54,6 @@ def plot_index(period,time):
     fig.update_layout(height=800, width=1000,showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
-@ st.cache_data
 def plot_pct(period,time):
     time = time
     # Fetch historical data for S&P 500
@@ -102,7 +100,6 @@ def plot_pct(period,time):
     fig.update_layout(yaxis_title='Total Return (%)')
     st.plotly_chart(fig, use_container_width=True)
 
-@ st.cache_data
 def plot_foreign(period,time):
     time = time
     # Fetch historical data for S&P 500
@@ -133,7 +130,6 @@ def plot_foreign(period,time):
     fig.update_layout(height=800, width=1000,showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
-@ st.cache_data
 def plot_pct_foreign(period,time):
     time = time
     # Fetch historical data for S&P 500
@@ -1027,7 +1023,6 @@ def get_stock_news(symbol):
 
 
 # 台股區
-@ st.cache_data
 def plot_index_tw(period,time):
     # Fetch historical data for S&P 500
     time = time
@@ -1050,7 +1045,6 @@ def plot_index_tw(period,time):
     fig.update_layout(height=800, width=1000,showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
-@ st.cache_data
 def plot_tw_asia(period,time):
     # Fetch historical data for S&P 500
     time = time
@@ -1088,7 +1082,6 @@ def plot_tw_asia(period,time):
     fig.update_layout(height=800, width=1000,showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
-@ st.cache_data
 def plot_pct_tw(period,time):
     # Fetch historical data for S&P 500
     time = time
