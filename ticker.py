@@ -54,11 +54,11 @@ def plot_index(period,time):
     fig.update_layout(height=800, width=1000,showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
-def plot_pct(period,time):
+def plot_pct(period, time):
     time = time
     # Fetch historical data for S&P 500
-    nasdaq_data = yf.download('^IXIC',period=period)
-    nasdaq_100_data = yf.download('^NDX',period=period)
+    nasdaq_data = yf.download('^IXIC', period=period)
+    nasdaq_100_data = yf.download('^NDX', period=period)
     sp500_data = yf.download('^GSPC', period=period)
     dji_data = yf.download('^DJI', period=period)
     brk_data = yf.download('BRK-A', period=period)
@@ -70,6 +70,27 @@ def plot_pct(period,time):
     dji_close = dji_data['Close']
     brk_close = brk_data['Close']
     Russell_2000_close = Russell_2000_data['Close']   
+    
+    # Check if any of the data frames are empty or do not have enough data
+    if nasdaq_close.empty or len(nasdaq_close) < 2:
+        st.warning(f"Nasdaq data is insufficient for the period: {period}")
+        return
+    if nasdaq_100_close.empty or len(nasdaq_100_close) < 2:
+        st.warning(f"Nasdaq-100 data is insufficient for the period: {period}")
+        return
+    if sp500_close.empty or len(sp500_close) < 2:
+        st.warning(f"S&P 500 data is insufficient for the period: {period}")
+        return
+    if dji_close.empty or len(dji_close) < 2:
+        st.warning(f"DJI data is insufficient for the period: {period}")
+        return
+    if brk_close.empty or len(brk_close) < 2:
+        st.warning(f"Berkshire Hathaway data is insufficient for the period: {period}")
+        return
+    if Russell_2000_close.empty or len(Russell_2000_close) < 2:
+        st.warning(f"Russell-2000 data is insufficient for the period: {period}")
+        return
+    
     # Calculate total returns
     nasdaq_total_return = ((nasdaq_close.iloc[-1] - nasdaq_close.iloc[0]) / nasdaq_close.iloc[0]) * 100
     nasdaq_100_total_return = ((nasdaq_100_close.iloc[-1] - nasdaq_100_close.iloc[0]) / nasdaq_100_close.iloc[0]) * 100
@@ -77,6 +98,7 @@ def plot_pct(period,time):
     dji_total_return = ((dji_close.iloc[-1] - dji_close.iloc[0]) / dji_close.iloc[0]) * 100
     brk_total_return = ((brk_close.iloc[-1] - brk_close.iloc[0]) / brk_close.iloc[0]) * 100
     Russell_2000_total_return = ((Russell_2000_close.iloc[-1] - Russell_2000_close.iloc[0]) / Russell_2000_close.iloc[0]) * 100
+    
     # Create Plotly figure
     fig = go.Figure()   
     # Create a dictionary to store the results
