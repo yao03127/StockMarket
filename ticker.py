@@ -657,46 +657,33 @@ def plot_income_statement(symbol):
         income_statement = income_statement.T  # 转置以便更容易读取
         income_statement.index = pd.to_datetime(income_statement.index)  # 将索引转换为日期时间格式
         return income_statement
+
     # 获取收入报表数据
     income_df = get_income_statement(symbol)
+
     # 定义收入报表的列
-    gross_profit_col = 'Gross Profit'
-    operating_income_col = 'Operating Income'
-    net_income_col = 'Net Income'
-    # 确保所有列名都存在于数据中
-    assert gross_profit_col in income_df.columns, f"{gross_profit_col} 不存在于收入报表中"
-    assert operating_income_col in income_df.columns, f"{operating_income_col} 不存在于收入报表中"
-    assert net_income_col in income_df.columns, f"{net_income_col} 不存在于收入报表中"
-    # 提取所需数据
-    gross_profit = income_df[gross_profit_col]
-    operating_income = income_df[operating_income_col]
-    net_income = income_df[net_income_col]
+    columns = ['Gross Profit', 'Operating Income', 'Net Income']
+
+    # 检查哪些列存在
+    available_columns = [col for col in columns if col in income_df.columns]
+
+    if not available_columns:
+        st.warning(f"No valid columns in the income statement for {symbol}. Cannot plot the data.")
+        return
+
     # 创建线图
     fig = go.Figure()
-    # 营业毛利线图
-    fig.add_trace(go.Scatter(
-        x=income_df.index,
-        y=gross_profit,
-        mode='lines+markers',
-        name='營業毛利',
-        line=dict(color='blue')
-    ))
-    # 营业净利线图
-    fig.add_trace(go.Scatter(
-        x=income_df.index,
-        y=operating_income,
-        mode='lines+markers',
-        name='營業淨利',
-        line=dict(color='green')
-    ))
-    # 税后净利线图
-    fig.add_trace(go.Scatter(
-        x=income_df.index,
-        y=net_income,
-        mode='lines+markers',
-        name='稅後淨利',
-        line=dict(color='red')
-    ))
+
+    # 为每个可用列创建线图
+    for col in available_columns:
+        fig.add_trace(go.Scatter(
+            x=income_df.index,
+            y=income_df[col],
+            mode='lines+markers',
+            name=col,
+            line=dict(width=2)
+        ))
+
     # 更新布局
     fig.update_layout(
         xaxis=dict(title='年度'),
@@ -704,12 +691,16 @@ def plot_income_statement(symbol):
         width=1200,  # 设置图表宽度
         height=800  # 设置图表高度
     )
+
     # 顯示圖表
     st.plotly_chart(fig)
+
     # 展开显示原始数据
     with st.expander('展開損益表'):
         st.write(income_df)
 
+
+   
 #損益表季度
 def plot_income_statement_Q(symbol):
     # 获取股票数据的函数
@@ -719,46 +710,33 @@ def plot_income_statement_Q(symbol):
         income_statement = income_statement.T  # 转置以便更容易读取
         income_statement.index = pd.to_datetime(income_statement.index)  # 将索引转换为日期时间格式
         return income_statement
+
     # 获取收入报表数据
     income_df = get_income_statement(symbol)
+
     # 定义收入报表的列
-    gross_profit_col = 'Gross Profit'
-    operating_income_col = 'Operating Income'
-    net_income_col = 'Net Income'
-    # 确保所有列名都存在于数据中
-    assert gross_profit_col in income_df.columns, f"{gross_profit_col} 不存在于收入报表中"
-    assert operating_income_col in income_df.columns, f"{operating_income_col} 不存在于收入报表中"
-    assert net_income_col in income_df.columns, f"{net_income_col} 不存在于收入报表中"
-    # 提取所需数据
-    gross_profit = income_df[gross_profit_col]
-    operating_income = income_df[operating_income_col]
-    net_income = income_df[net_income_col]
+    columns = ['Gross Profit', 'Operating Income', 'Net Income']
+
+    # 检查哪些列存在
+    available_columns = [col for col in columns if col in income_df.columns]
+
+    if not available_columns:
+        st.warning(f"No valid columns in the quarterly income statement for {symbol}. Cannot plot the data.")
+        return
+
     # 创建线图
     fig = go.Figure()
-    # 营业毛利线图
-    fig.add_trace(go.Scatter(
-        x=income_df.index,
-        y=gross_profit,
-        mode='lines+markers',
-        name='營業毛利',
-        line=dict(color='blue')
-    ))
-    # 营业净利线图
-    fig.add_trace(go.Scatter(
-        x=income_df.index,
-        y=operating_income,
-        mode='lines+markers',
-        name='營業淨利',
-        line=dict(color='green')
-    ))
-    # 税后净利线图
-    fig.add_trace(go.Scatter(
-        x=income_df.index,
-        y=net_income,
-        mode='lines+markers',
-        name='稅後淨利',
-        line=dict(color='red')
-    ))
+
+    # 为每个可用列创建线图
+    for col in available_columns:
+        fig.add_trace(go.Scatter(
+            x=income_df.index,
+            y=income_df[col],
+            mode='lines+markers',
+            name=col,
+            line=dict(width=2)
+        ))
+
     # 更新布局
     fig.update_layout(
         xaxis=dict(title='季度'),
@@ -766,11 +744,15 @@ def plot_income_statement_Q(symbol):
         width=1200,  # 设置图表宽度
         height=800  # 设置图表高度
     )
+
     # 顯示圖表
     st.plotly_chart(fig)
+
     # 展开显示原始数据
     with st.expander('展開損益表'):
         st.write(income_df)
+
+
 
 #現金流量表年度
 def plot_cashflow_statement(symbol):
