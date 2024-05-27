@@ -463,6 +463,19 @@ def categorize_and_plot(df, symbol):
     st.subheader(f'{symbol}-基本資訊')
     st.plotly_chart(fig, use_container_width=True)
 
+# 定义函数以获取股票数据
+def get_stock_data(symbol,time_range):
+    stock_data = yf.download(symbol,period=time_range)
+    return stock_data
+
+# 计算价格差异的函数
+def calculate_price_difference(stock_data, period_days):
+    latest_price = stock_data.iloc[-1]["Adj Close"]  # 获取最新的收盘价
+    previous_price = stock_data.iloc[-period_days]["Adj Close"] if len(stock_data) > period_days else stock_data.iloc[0]["Adj Close"]  # 获取特定天数前的收盘价
+    price_difference = latest_price - previous_price  # 计算价格差异
+    percentage_difference = (price_difference / previous_price) * 100  # 计算百分比变化
+    return price_difference, percentage_difference  # 返回价格差异和百分比变化
+
 #機構評級
 def scrape_and_plot_finviz_data(symbol):
     # 爬虫部分
@@ -1003,7 +1016,6 @@ def app():
                     st.error(f'查無{symbol}數據')
                 with st.expander(f'展開{symbol}-{time_range}數據'):
                     st.dataframe(stock_data)
-                    st.download_button(f"下載{symbol}-{time_range}數據", stock_data.to_csv(index=True), file_name=f"{symbol}-{time_range}.csv", mime="text/csv")
     
     elif market == '美國' and options == '機構買賣':
         symbol = st.text_input('輸入美股代號').upper()
