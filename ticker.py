@@ -46,7 +46,7 @@ def plot_index(period,time):
     fig.add_trace(go.Scatter(x=nasdaq_100_close.index, y=nasdaq_100_close.values, mode='lines', name='NASDAQ-100'), row=1, col=2)
     fig.add_trace(go.Scatter(x=sp500_close.index, y=sp500_close.values, mode='lines', name='S&P 500'), row=2, col=1)
     fig.add_trace(go.Scatter(x=dji_close.index, y=dji_close.values, mode='lines', name='DJIA'), row=2, col=2)
-    fig.add_trace(go.Scatter(x=sox_close.index, y=sox_close.values, mode='lines', name='美國費城半導體指數'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=sox_close.index, y=sox_close.values, mode='lines', name='PHLX Semiconductor Sector'), row=3, col=1)
     fig.add_trace(go.Scatter(x=Russell_2000_close.index, y=Russell_2000_close.values, mode='lines', name='Russell-2000'), row=3, col=2)
     # Update layout
     fig.update_layout(height=800, width=1000,showlegend=False)
@@ -105,7 +105,7 @@ def plot_pct(period, time):
         'NASDAQ-100': nasdaq_100_total_return,
         'S&P 500': sp500_total_return,
         'DJIA': dji_total_return,
-        '美國費城半導體指數': sox_total_return,
+        'PHLX Semiconductor Sector': sox_total_return,
         'Russell-2000': Russell_2000_total_return
     }
     colors = px.colors.qualitative.Plotly
