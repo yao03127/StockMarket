@@ -40,7 +40,7 @@ def plot_index(period,time):
     Russell_2000_close = Russell_2000_data['Close']   
     st.subheader(f'美股大盤＆中小企業{time}走勢')
     # Create Plotly subplot figure
-    fig = make_subplots(rows=3, cols=2, subplot_titles=("NASDAQ", "NASDAQ-100", "S&P 500", "DJIA", "Berkshire Hathaway Inc.", "Russell-2000"))
+    fig = make_subplots(rows=3, cols=2, subplot_titles=("NASDAQ", "NASDAQ-100", "S&P 500", "DJIA", "PHLX Semiconductor Sector", "Russell-2000"))
     # Add traces for Log Close price
     fig.add_trace(go.Scatter(x=nasdaq_close.index, y=nasdaq_close.values, mode='lines', name='NASDAQ'), row=1, col=1)
     fig.add_trace(go.Scatter(x=nasdaq_100_close.index, y=nasdaq_100_close.values, mode='lines', name='NASDAQ-100'), row=1, col=2)
